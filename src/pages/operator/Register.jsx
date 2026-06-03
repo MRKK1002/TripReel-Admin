@@ -1,61 +1,93 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Plane, Eye, EyeOff, UserPlus } from "lucide-react";
+import {
+  Plane, Eye, EyeOff, UserPlus, User, Mail,
+  Phone, Lock, ShieldCheck, AlertCircle,
+} from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
+
+function InputField({ label, icon: Icon, type = "text", value, onChange, placeholder, required, rightSlot, error }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 transition-all focus-within:ring-2 ${
+        error
+          ? "border-red-300 focus-within:ring-red-200 focus-within:border-red-400 bg-red-50"
+          : "border-gray-300 focus-within:ring-teal-500 focus-within:border-teal-500 bg-white"
+      }`}>
+        {Icon && <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+        <input
+          type={type}
+          required={required}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
+        />
+        {rightSlot}
+      </div>
+      {error && (
+        <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" /> {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function OperatorRegister() {
   const { register } = useOperatorAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    contactName: "",
-    email: "",
-    phone: "",
-    password: "",
+    contactName: "", email: "", phone: "", password: "", confirmPassword: "",
   });
   const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const set = (key, val) => {
+    setForm(prev => ({ ...prev, [key]: val }));
+    setFieldErrors(prev => ({ ...prev, [key]: "" }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+
+    const fe = {};
+    if (!form.contactName.trim()) fe.contactName = "Full name is required.";
+    if (!form.email.trim()) fe.email = "Email is required.";
+    if (!form.phone.trim()) fe.phone = "Phone number is required.";
+    if (form.password.length < 8) fe.password = "Password must be at least 8 characters.";
+    if (!form.confirmPassword) fe.confirmPassword = "Please confirm your password.";
+    else if (form.password !== form.confirmPassword) fe.confirmPassword = "Passwords do not match.";
+
+    if (Object.keys(fe).length > 0) {
+      setFieldErrors(fe);
       return;
     }
+
     setLoading(true);
     try {
-      await register(form);
+      const { confirmPassword, ...submitData } = form;
+      await register(submitData);
       navigate("/operator/onboarding", { replace: true });
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Registration failed. Please try again."
-      );
+      setError(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const field = (key, label, type = "text", placeholder = "") => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}
-      </label>
-      <input
-        type={type}
-        required
-        value={form[key]}
-        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-        placeholder={placeholder}
-        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
-      />
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f2231] via-[#1a3347] to-[#0f2231] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-500 rounded-2xl mb-4 shadow-lg shadow-teal-500/30">
@@ -67,52 +99,63 @@ export default function OperatorRegister() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            Create your account
-          </h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Register as a TripReel operator
-          </p>
+          <h2 className="text-xl font-semibold text-gray-800 mb-1">Create your account</h2>
+          <p className="text-sm text-gray-500 mb-6">Register as a TripReel operator</p>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {field("contactName", "Full Name", "text", "John Smith")}
-            {field("email", "Business Email", "email", "you@company.com")}
-            {field("phone", "Phone Number", "tel", "+91 98765 43210")}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPwd ? "text" : "password"}
-                  required
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  placeholder="Min. 8 characters"
-                  className="w-full px-4 py-2.5 pr-11 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPwd ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+            <InputField
+              label="Full Name" required icon={User}
+              value={form.contactName} onChange={v => set("contactName", v)}
+              placeholder="John Smith" error={fieldErrors.contactName}
+            />
+
+            <InputField
+              label="Business Email" required icon={Mail} type="email"
+              value={form.email} onChange={v => set("email", v)}
+              placeholder="you@company.com" error={fieldErrors.email}
+            />
+
+            <InputField
+              label="Phone Number" required icon={Phone} type="tel"
+              value={form.phone} onChange={v => set("phone", v)}
+              placeholder="+91 98765 43210" error={fieldErrors.phone}
+            />
+
+            <InputField
+              label="Password" required icon={Lock}
+              type={showPwd ? "text" : "password"}
+              value={form.password} onChange={v => set("password", v)}
+              placeholder="Min. 8 characters"
+              error={fieldErrors.password}
+              rightSlot={
+                <button type="button" onClick={() => setShowPwd(p => !p)}
+                  className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              </div>
-            </div>
+              }
+            />
+
+            <InputField
+              label="Confirm Password" required icon={ShieldCheck}
+              type={showConfirm ? "text" : "password"}
+              value={form.confirmPassword} onChange={v => set("confirmPassword", v)}
+              placeholder="Re-enter your password"
+              error={fieldErrors.confirmPassword}
+              rightSlot={
+                <button type="button" onClick={() => setShowConfirm(p => !p)}
+                  className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              }
+            />
 
             <button
               type="submit"
@@ -132,10 +175,7 @@ export default function OperatorRegister() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Already have an account?{" "}
-            <Link
-              to="/operator/login"
-              className="text-teal-600 font-medium hover:underline"
-            >
+            <Link to="/operator/login" className="text-teal-600 font-medium hover:underline">
               Sign in
             </Link>
           </p>

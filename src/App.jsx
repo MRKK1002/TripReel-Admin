@@ -58,10 +58,13 @@ function AdminRoute({ children }) {
 }
 
 // ── Operator route guard ──────────────────────────────────────────────────────
-function OperatorRoute({ children }) {
+function OperatorRoute({ children, requireApproved = false }) {
   const { operator, operatorLoading } = useOperatorAuth();
   if (operatorLoading) return <Spinner />;
-  if (!operator) return <Navigate to="/operator/login" replace />;
+  if (!operator) return <Navigate to="/login" replace />;
+  if (requireApproved && operator.onboardingState !== "APPROVED") {
+    return <Navigate to="/operator/status" replace />;
+  }
   return children;
 }
 
@@ -125,29 +128,31 @@ function App() {
             {/* ── Operator register (public) ── */}
             <Route path="/operator/register" element={<OperatorRegister />} />
 
-            {/* ── Operator pages (with OperatorSidebar) ── */}
+            {/* ── Operator pages (onboarding/status — no sidebar) ── */}
             <Route path="/operator/onboarding" element={
               <OperatorRoute>
-                <OperatorLayout><OperatorOnboarding /></OperatorLayout>
+                <OperatorOnboarding />
               </OperatorRoute>
             } />
             <Route path="/operator/status" element={
               <OperatorRoute>
-                <OperatorLayout><OperatorStatus /></OperatorLayout>
+                <OperatorStatus />
               </OperatorRoute>
             } />
+
+            {/* ── Operator pages (approved — with sidebar) ── */}
             <Route path="/operator/dashboard" element={
-              <OperatorRoute>
+              <OperatorRoute requireApproved>
                 <OperatorLayout><OperatorDashboard /></OperatorLayout>
               </OperatorRoute>
             } />
             <Route path="/operator/packages" element={
-              <OperatorRoute>
+              <OperatorRoute requireApproved>
                 <OperatorLayout><OperatorPackages /></OperatorLayout>
               </OperatorRoute>
             } />
             <Route path="/operator/listings" element={
-              <OperatorRoute>
+              <OperatorRoute requireApproved>
                 <OperatorLayout><OperatorListings /></OperatorLayout>
               </OperatorRoute>
             } />

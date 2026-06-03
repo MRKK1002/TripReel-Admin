@@ -14,7 +14,6 @@ import {
   MapPin,
   Upload,
   ImagePlus,
-  Image,
 } from "lucide-react";
 import { operatorPackagesAPI } from "../../services/api";
 
@@ -38,18 +37,13 @@ const STATUS_COLORS = {
 
 const emptyForm = {
   title: "",
-  subtitle: "",
-  packageCode: "",
   tourType: "",
   destination: "",
   departureCity: "",
   durationDays: "",
   durationNights: "",
   location: "",
-  categories: [],
-  description: "",
-  fullDescription: "",
-  whyChoose: "",
+  aboutThisTrip: "",
   about: "",
   price: "",
   priceLabel: "",
@@ -72,10 +66,6 @@ const emptyForm = {
   pricing: {
     adultPrice: "",
     childPrice: "",
-    extraPersonPrice: "",
-    discountPrice: "",
-    gstPercent: "",
-    convenienceFee: "",
   },
   availability: {
     startDate: "",
@@ -83,40 +73,12 @@ const emptyForm = {
     availableSeats: "",
     bookingDeadline: "",
   },
-  locationDetails: {
-    destinationName: "",
-    googleMapUrl: "",
-    pickupPoint: "",
-    meetingPoint: "",
-  },
   policies: { cancellationPolicy: "", refundPolicy: "", terms: "" },
   offer: { couponCode: "", earlyBirdOffer: "", festivalOffer: "", groupDiscount: "" },
 };
 
-// Previews are kept separately (data URLs for display, File objects for upload)
-const emptyPreviews = {
-  image_url: "",      // data URL or existing URL
-  images: ["", "", "", ""], // data URLs or existing URLs
-};
-const emptyFiles = {
-  image_url: null,    // File | null
-  images: [null, null, null, null], // File | null
-};
-
 const inp =
   "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-teal-400 focus:bg-white transition-all";
-
-const PACKAGE_CATEGORIES = [
-  "Domestic Tour",
-  "International Tour",
-  "Honeymoon",
-  "Adventure",
-  "Family Tour",
-  "Group Tour",
-  "Corporate Tour",
-  "Luxury Tour",
-  "Budget Tour",
-];
 
 const TOUR_TYPES = ["Domestic", "International", "Adventure"];
 
@@ -149,15 +111,11 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
     return {
       ...emptyForm,
       ...pkg,
-      subtitle: pkg.subtitle ?? pkg.subTitle ?? "",
-      packageCode: pkg.packageCode ?? pkg.code ?? "",
       destination: pkg.destination ?? "",
       departureCity: pkg.departureCity ?? "",
       durationDays: pkg.durationDays ?? "",
       durationNights: pkg.durationNights ?? "",
-      categories: Array.isArray(pkg.categories) ? pkg.categories : [],
-      fullDescription: pkg.fullDescription ?? "",
-      whyChoose: pkg.whyChoose ?? "",
+      aboutThisTrip: pkg.aboutThisTrip ?? pkg.fullDescription ?? "",
       videos: pkg.videos?.length ? pkg.videos : [""],
       highlights: pkg.highlights?.length ? pkg.highlights : [""],
       inclusions: pkg.inclusions?.length ? pkg.inclusions : [""],
@@ -168,23 +126,22 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
       transportDetails: { ...emptyForm.transportDetails, ...(pkg.transportDetails || {}) },
       pricing: { ...emptyForm.pricing, ...(pkg.pricing || {}) },
       availability: { ...emptyForm.availability, ...(pkg.availability || {}) },
-      locationDetails: { ...emptyForm.locationDetails, ...(pkg.locationDetails || {}) },
       policies: { ...emptyForm.policies, ...(pkg.policies || {}) },
       offer: { ...emptyForm.offer, ...(pkg.offer || {}) },
     };
   });
 
-  // File objects for new uploads
-  const [coverFile, setCoverFile] = useState(null);
-  const [galleryFiles, setGalleryFiles] = useState([null, null, null, null]);
+  // File objects for new uploads — slot 0 is automatically the cover image
+  const [imageFiles, setImageFiles] = useState([null, null, null, null]);
 
-  // Preview URLs (existing server URLs or local object URLs)
-  const [coverPreview, setCoverPreview] = useState(pkg?.image_url || "");
-  const [galleryPreviews, setGalleryPreviews] = useState(
-    pkg?.images?.length
-      ? [...pkg.images, "", "", "", ""].slice(0, 4)
-      : ["", "", "", ""]
-  );
+  // Preview URLs (existing server URLs or local object URLs) — slot 0 = cover
+  const [imagePreviews, setImagePreviews] = useState(() => {
+    // Merge existing cover + gallery into one flat array of up to 4
+    const existing = [];
+    if (pkg?.image_url) existing.push(pkg.image_url);
+    if (pkg?.images?.length) existing.push(...pkg.images);
+    return [...existing, "", "", "", ""].slice(0, 4);
+  });
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -192,22 +149,15 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  const handleCoverChange = (file) => {
+  const handleImageChange = (file, idx) => {
     if (!file) return;
-    setCoverFile(file);
-    setCoverPreview(URL.createObjectURL(file));
+    const files = [...imageFiles]; files[idx] = file; setImageFiles(files);
+    const previews = [...imagePreviews]; previews[idx] = URL.createObjectURL(file); setImagePreviews(previews);
   };
 
-  const handleGalleryChange = (file, idx) => {
-    if (!file) return;
-    const files = [...galleryFiles]; files[idx] = file; setGalleryFiles(files);
-    const previews = [...galleryPreviews]; previews[idx] = URL.createObjectURL(file); setGalleryPreviews(previews);
-  };
-
-  const removeCover = () => { setCoverFile(null); setCoverPreview(""); };
-  const removeGallery = (idx) => {
-    const files = [...galleryFiles]; files[idx] = null; setGalleryFiles(files);
-    const previews = [...galleryPreviews]; previews[idx] = ""; setGalleryPreviews(previews);
+  const removeImage = (idx) => {
+    const files = [...imageFiles]; files[idx] = null; setImageFiles(files);
+    const previews = [...imagePreviews]; previews[idx] = ""; setImagePreviews(previews);
   };
 
   const validateSubmit = () => {
@@ -215,13 +165,12 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
     const destination = (form.destination || form.location || "").trim();
     if (!destination) return "Destination is required.";
     const price =
-      Number(form.pricing?.discountPrice || 0) ||
       Number(form.pricing?.adultPrice || 0) ||
       Number(form.price || 0);
     if (!price || Number.isNaN(price) || price <= 0) return "Adult price (or base price) is required.";
     const itineraryOk = Array.isArray(form.itinerary) && form.itinerary.some((d) => d?.title?.trim());
     if (!itineraryOk) return "Add at least 1 itinerary day with a title.";
-    if (!coverFile && !coverPreview) return "Cover image is required to submit.";
+    if (!imageFiles[0] && !imagePreviews[0]) return "At least 1 image is required to submit.";
     return "";
   };
 
@@ -248,7 +197,6 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
       const resolvedLocation = resolvedDestination || form.location || "";
 
       const resolvedPrice =
-        Number(form.pricing?.discountPrice || 0) ||
         Number(form.pricing?.adultPrice || 0) ||
         Number(form.price || 0) ||
         0;
@@ -261,15 +209,11 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
 
       const scalars = [
         "title",
-        "subtitle",
-        "packageCode",
         "tourType",
         "departureCity",
         "durationDays",
         "durationNights",
-        "description",
-        "fullDescription",
-        "whyChoose",
+        "aboutThisTrip",
         "about",
         "priceLabel",
         "badge",
@@ -288,7 +232,6 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
         highlights: cleanStrList(form.highlights),
         inclusions: cleanStrList(form.inclusions),
         exclusions: cleanStrList(form.exclusions),
-        categories: cleanStrList(form.categories),
         videos: cleanStrList(form.videos),
         itinerary: (Array.isArray(form.itinerary) ? form.itinerary : [])
           .map((d, idx) => ({
@@ -330,22 +273,12 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
         pricing: {
           adultPrice: toNum(form.pricing?.adultPrice),
           childPrice: toNum(form.pricing?.childPrice),
-          extraPersonPrice: toNum(form.pricing?.extraPersonPrice),
-          discountPrice: toNum(form.pricing?.discountPrice),
-          gstPercent: toNum(form.pricing?.gstPercent),
-          convenienceFee: toNum(form.pricing?.convenienceFee),
         },
         availability: {
           startDate: form.availability?.startDate || "",
           endDate: form.availability?.endDate || "",
           availableSeats: toNum(form.availability?.availableSeats),
           bookingDeadline: form.availability?.bookingDeadline || "",
-        },
-        locationDetails: {
-          destinationName: form.locationDetails?.destinationName || "",
-          googleMapUrl: form.locationDetails?.googleMapUrl || "",
-          pickupPoint: form.locationDetails?.pickupPoint || "",
-          meetingPoint: form.locationDetails?.meetingPoint || "",
         },
         policies: {
           cancellationPolicy: form.policies?.cancellationPolicy || "",
@@ -362,17 +295,12 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
 
       Object.entries(objects).forEach(([k, v]) => fd.append(k, JSON.stringify(v)));
 
-      if (coverFile) {
-        fd.append("image_url", coverFile);
-      } else if (coverPreview) {
-        fd.append("existing_image_url", coverPreview);
-      }
-
-      galleryFiles.forEach((file, i) => {
+      // Slot 0 = cover image (image_url), slots 1-3 = gallery (images)
+      imageFiles.forEach((file, i) => {
         if (file) {
-          fd.append("images", file);
-        } else if (galleryPreviews[i]) {
-          fd.append("existing_images", galleryPreviews[i]);
+          fd.append(i === 0 ? "image_url" : "images", file);
+        } else if (imagePreviews[i]) {
+          fd.append(i === 0 ? "existing_image_url" : "existing_images", imagePreviews[i]);
         }
       });
 
@@ -421,14 +349,6 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
     setForm((prev) => ({ ...prev, [root]: { ...(prev[root] || {}), [key]: val } }));
   };
 
-  const toggleCategory = (c) => {
-    setForm((prev) => {
-      const cur = Array.isArray(prev.categories) ? prev.categories : [];
-      const next = cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c];
-      return { ...prev, categories: next };
-    });
-  };
-
   const goNext = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
@@ -445,28 +365,6 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
                 value={form.title}
                 onChange={(e) => set("title", e.target.value)}
                 placeholder="e.g. Goa Beach Holiday"
-                className={inp}
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Package Subtitle
-              </label>
-              <input
-                value={form.subtitle}
-                onChange={(e) => set("subtitle", e.target.value)}
-                placeholder="e.g. 4 Days / 3 Nights"
-                className={inp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Package Code/ID
-              </label>
-              <input
-                value={form.packageCode}
-                onChange={(e) => set("packageCode", e.target.value)}
-                placeholder="e.g. GOA-4D3N-001"
                 className={inp}
               />
             </div>
@@ -537,62 +435,14 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Package Category
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {PACKAGE_CATEGORIES.map((c) => (
-                  <label
-                    key={c}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-colors ${
-                      (form.categories || []).includes(c)
-                        ? "border-teal-300 bg-teal-50 text-teal-700"
-                        : "border-gray-200 hover:border-teal-300"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={(form.categories || []).includes(c)}
-                      onChange={() => toggleCategory(c)}
-                      className="accent-teal-600"
-                    />
-                    {c}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Short Description
-              </label>
-              <input
-                value={form.description}
-                onChange={(e) => set("description", e.target.value)}
-                placeholder="One-line summary shown in listings"
-                className={inp}
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Full Description
+                About This Trip
               </label>
               <textarea
-                value={form.fullDescription}
-                onChange={(e) => set("fullDescription", e.target.value)}
+                value={form.aboutThisTrip}
+                onChange={(e) => set("aboutThisTrip", e.target.value)}
                 rows={4}
                 placeholder="Detailed overview of the package"
-                className={inp + " resize-none"}
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Why choose this package
-              </label>
-              <textarea
-                value={form.whyChoose}
-                onChange={(e) => set("whyChoose", e.target.value)}
-                rows={3}
-                placeholder="Key selling points and differentiators"
                 className={inp + " resize-none"}
               />
             </div>
@@ -603,76 +453,52 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
 
     if (step === 1) {
       return (
-        <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Cover Image <span className="text-gray-400 font-normal">(max 5 MB)</span>
-            </label>
-            {coverPreview ? (
-              <div className="relative rounded-xl overflow-hidden">
-                <img src={coverPreview} alt="cover" className="w-full h-44 object-cover" />
-                <button
-                  type="button"
-                  onClick={removeCover}
-                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
-                >
-                  <X className="w-3.5 h-3.5 text-white" />
-                </button>
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Upload up to 4 photos. The <span className="font-semibold text-teal-600">first photo</span> will be used as the cover image.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {[0, 1, 2, 3].map((idx) => (
+              <div key={idx}>
+                {imagePreviews[idx] ? (
+                  <div className="relative rounded-xl overflow-hidden">
+                    <img
+                      src={imagePreviews[idx]}
+                      alt={`photo ${idx + 1}`}
+                      className="w-full h-36 object-cover"
+                    />
+                    {/* Cover badge on first slot */}
+                    {idx === 0 && (
+                      <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-500 text-white shadow">
+                        Cover
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(idx)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                    <ImagePlus className="w-6 h-6 text-gray-400 mb-1" />
+                    <span className="text-xs text-gray-500 font-medium">
+                      {idx === 0 ? "Photo 1 (Cover)" : `Photo ${idx + 1}`}
+                    </span>
+                    <span className="text-xs text-gray-400 mt-0.5">max 5 MB</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => handleImageChange(e.target.files?.[0], idx)}
+                    />
+                  </label>
+                )}
               </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
-                <Upload className="w-7 h-7 text-gray-400 mb-2" />
-                <span className="text-sm text-gray-500">Click to upload cover image</span>
-                <span className="text-xs text-gray-400 mt-0.5">or drag and drop</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => handleCoverChange(e.target.files?.[0])}
-                />
-              </label>
-            )}
+            ))}
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Gallery Images <span className="text-gray-400 font-normal">(up to 4)</span>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map((idx) => (
-                <div key={idx}>
-                  {galleryPreviews[idx] ? (
-                    <div className="relative rounded-xl overflow-hidden">
-                      <img
-                        src={galleryPreviews[idx]}
-                        alt={`gallery ${idx + 1}`}
-                        className="w-full h-28 object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeGallery(idx)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
-                      >
-                        <X className="w-3 h-3 text-white" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
-                      <ImagePlus className="w-5 h-5 text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-400">Photo {idx + 1}</span>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        className="hidden"
-                        onChange={(e) => handleGalleryChange(e.target.files?.[0], idx)}
-                      />
-                    </label>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
           <TagListEditor
             label="Video URLs (optional)"
             values={form.videos || [""]}
@@ -742,6 +568,7 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Adult Price (₹) *</label>
                 <input
                   type="number"
+                  min="0"
                   value={form.pricing?.adultPrice}
                   onChange={(e) => setNested("pricing.adultPrice", e.target.value)}
                   placeholder="8999"
@@ -752,58 +579,22 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Child Price (₹)</label>
                 <input
                   type="number"
+                  min="0"
                   value={form.pricing?.childPrice}
                   onChange={(e) => setNested("pricing.childPrice", e.target.value)}
                   placeholder="5999"
                   className={inp}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Extra Person (₹)</label>
-                <input
-                  type="number"
-                  value={form.pricing?.extraPersonPrice}
-                  onChange={(e) => setNested("pricing.extraPersonPrice", e.target.value)}
-                  placeholder="3999"
-                  className={inp}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Discount Price (₹)</label>
-                <input
-                  type="number"
-                  value={form.pricing?.discountPrice}
-                  onChange={(e) => setNested("pricing.discountPrice", e.target.value)}
-                  placeholder="7999"
-                  className={inp}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">GST (%)</label>
-                <input
-                  type="number"
-                  value={form.pricing?.gstPercent}
-                  onChange={(e) => setNested("pricing.gstPercent", e.target.value)}
-                  placeholder="5"
-                  className={inp}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Convenience Fee (₹)</label>
-                <input
-                  type="number"
-                  value={form.pricing?.convenienceFee}
-                  onChange={(e) => setNested("pricing.convenienceFee", e.target.value)}
-                  placeholder="99"
-                  className={inp}
-                />
-              </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Price Label</label>
                 <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={form.priceLabel}
-                  onChange={(e) => set("priceLabel", e.target.value)}
-                  placeholder="From ₹7,999/person"
+                  onChange={(e) => set("priceLabel", e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="e.g. 7999"
                   className={inp}
                 />
               </div>
@@ -942,48 +733,6 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
               </div>
             </div>
           </div>
-
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm font-semibold text-gray-800 mb-3">Location Details</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Destination Name</label>
-                <input
-                  value={form.locationDetails?.destinationName}
-                  onChange={(e) => setNested("locationDetails.destinationName", e.target.value)}
-                  placeholder="Goa"
-                  className={inp}
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Google Map Location URL</label>
-                <input
-                  value={form.locationDetails?.googleMapUrl}
-                  onChange={(e) => setNested("locationDetails.googleMapUrl", e.target.value)}
-                  placeholder="https://maps.google.com/..."
-                  className={inp}
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Pickup Point</label>
-                <input
-                  value={form.locationDetails?.pickupPoint}
-                  onChange={(e) => setNested("locationDetails.pickupPoint", e.target.value)}
-                  placeholder="Airport / Railway station"
-                  className={inp}
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Meeting Point</label>
-                <input
-                  value={form.locationDetails?.meetingPoint}
-                  onChange={(e) => setNested("locationDetails.meetingPoint", e.target.value)}
-                  placeholder="Hotel lobby / main gate"
-                  className={inp}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       );
     }
@@ -1077,8 +826,8 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
       const submitErr = validateSubmit();
       return (
         <div className="space-y-4">
-          {coverPreview && (
-            <img src={coverPreview} alt="cover" className="w-full h-48 object-cover rounded-xl" />
+          {imagePreviews[0] && (
+            <img src={imagePreviews[0]} alt="cover" className="w-full h-48 object-cover rounded-xl" />
           )}
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="flex items-start justify-between gap-3">
@@ -1096,15 +845,6 @@ function PackageFormModal({ pkg, onClose, onSaved }) {
                 <p className="text-xs text-gray-400">per person</p>
               </div>
             </div>
-            {(form.categories || []).length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {form.categories.map((c) => (
-                  <span key={c} className="px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-gray-200 text-gray-700">
-                    {c}
-                  </span>
-                ))}
-              </div>
-            )}
             {submitErr ? (
               <div className="mt-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800">
                 {submitErr}

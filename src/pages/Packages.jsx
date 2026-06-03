@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Search,
   ChevronLeft,
@@ -10,12 +9,9 @@ import {
   XCircle,
   MessageSquare,
   AlertCircle,
-  ExternalLink,
   X,
-  Tag,
-  ChevronDown,
 } from "lucide-react";
-import { adminPackagesAPI, categoriesAPI } from "../services/api";
+import { adminPackagesAPI } from "../services/api";
 
 const STATUS_LABELS = {
   DRAFT: "Draft",
@@ -37,34 +33,30 @@ const STATUS_COLORS = {
 
 function StatusBadge({ status }) {
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-        STATUS_COLORS[status] || "bg-gray-100 text-gray-700"
-      }`}
-    >
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[status] || "bg-gray-100 text-gray-700"}`}>
       {STATUS_LABELS[status] || status}
     </span>
   );
 }
 
 function formatDate(ts) {
-  return new Date(ts).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  if (!ts) return "—";
+  return new Date(ts).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function InfoBlock({ label, value }) {
+  return (
+    <div className="bg-gray-50 rounded-xl p-3">
+      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="font-medium text-gray-800 text-sm">{value || "—"}</p>
+    </div>
+  );
 }
 
 // ── Package Detail + Review Modal ─────────────────────────────────────────────
-function ReviewModal({ pkg, categories, onClose, onReviewed }) {
-  const [action, setAction] = useState(""); // 'approve' | 'reject' | 'needs_revision'
+function ReviewModal({ pkg, onClose, onReviewed }) {
+  const [action, setAction] = useState("");
   const [adminNotes, setAdminNotes] = useState(pkg.adminNotes || "");
-  const [approvedCategory, setApprovedCategory] = useState(
-    pkg.approvedCategory || pkg.category || ""
-  );
-  const [isFeatured, setIsFeatured] = useState(Boolean(pkg.isFeatured));
-  const [isTrending, setIsTrending] = useState(Boolean(pkg.isTrending));
-  const [badge, setBadge] = useState(pkg.badge || "Popular");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -75,20 +67,12 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
       setError("Please add a note (min 5 chars) explaining the issue.");
       return;
     }
-    if (action === "approve" && !approvedCategory) {
-      setError("Select a category before approving.");
-      return;
-    }
     setError("");
     setLoading(true);
     try {
       const res = await adminPackagesAPI.review(pkg._id, {
         action,
         adminNotes: adminNotes.trim(),
-        approvedCategory: action === "approve" ? approvedCategory : undefined,
-        isFeatured: action === "approve" ? isFeatured : undefined,
-        isTrending: action === "approve" ? isTrending : undefined,
-        badge: action === "approve" ? badge : undefined,
       });
       onReviewed(res.data.package);
       onClose();
@@ -103,94 +87,83 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-100">
+        <div className="flex items-start justify-between p-5 border-b border-gray-100">
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h2 className="text-lg font-bold text-gray-900 truncate">{pkg.title}</h2>
               <StatusBadge status={pkg.status} />
             </div>
-            <p className="text-sm text-gray-500">
-              {pkg.location} · {pkg.duration} ·{" "}
-              <span className="font-medium text-gray-700">
-                ₹{Number(pkg.price).toLocaleString()}
-              </span>
-            </p>
             {pkg.operatorId && (
-              <p className="text-xs text-gray-400 mt-1">
-                By:{" "}
-                <span className="font-medium text-gray-600">
-                  {pkg.operatorId.businessName || pkg.operatorId.contactName}
-                </span>{" "}
-                · {pkg.operatorId.email}
+              <p className="text-xs text-gray-400">
+                By <span className="font-medium text-gray-600">{pkg.operatorId.businessName || pkg.operatorId.contactName}</span>
+                {" · "}{pkg.operatorId.email}
               </p>
             )}
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg flex-shrink-0">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Cover image */}
-          {pkg.image_url && (
-            <img
-              src={pkg.image_url}
-              alt={pkg.title}
-              className="w-full h-48 object-cover rounded-xl"
-            />
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+          {/* Photos */}
+          {(pkg.image_url || pkg.images?.length > 0) && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Photos</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[pkg.image_url, ...(pkg.images || [])].filter(Boolean).map((url, i) => (
+                  <div key={i} className="relative rounded-xl overflow-hidden">
+                    <img src={url} alt={`photo ${i + 1}`} className="w-full h-32 object-cover" />
+                    {i === 0 && (
+                      <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-500 text-white">
+                        Cover
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
-          {/* Package details */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {[
-              ["Category", pkg.category || "—"],
-              ["Badge", pkg.badge || "—"],
-              ["Duration", pkg.duration || "—"],
-              ["Price", pkg.price ? `₹${Number(pkg.price).toLocaleString()}` : "—"],
-            ].map(([label, value]) => (
-              <div key={label} className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-                <p className="font-medium text-gray-800">{value}</p>
-              </div>
-            ))}
+          {/* Core info */}
+          <div className="grid grid-cols-2 gap-3">
+            <InfoBlock label="Location" value={pkg.destination || pkg.location} />
+            <InfoBlock label="Duration" value={pkg.duration} />
+            <InfoBlock label="Departure City" value={pkg.departureCity} />
+            <InfoBlock label="Tour Type" value={pkg.tourType} />
           </div>
 
-          {(pkg.destination || pkg.departureCity || (pkg.categories || []).length > 0) && (
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {[
-                ["Destination", pkg.destination || pkg.location || "—"],
-                ["Departure City", pkg.departureCity || "—"],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-                  <p className="font-medium text-gray-800">{value}</p>
-                </div>
-              ))}
-              <div className="col-span-2 bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Package Categories</p>
-                <p className="font-medium text-gray-800">
-                  {(pkg.categories || []).filter(Boolean).join(", ") || "—"}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {pkg.description && (
+          {/* About This Trip */}
+          {(pkg.aboutThisTrip || pkg.fullDescription || pkg.about) && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Description</p>
-              <p className="text-sm text-gray-700">{pkg.description}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">About This Trip</p>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {pkg.aboutThisTrip || pkg.fullDescription || pkg.about}
+              </p>
             </div>
           )}
 
-          {pkg.about && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">About</p>
-              <p className="text-sm text-gray-700">{pkg.about}</p>
+          {/* Pricing */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pricing</p>
+            <div className="grid grid-cols-2 gap-3">
+              <InfoBlock
+                label="Adult Price"
+                value={pkg.pricing?.adultPrice ? `₹${Number(pkg.pricing.adultPrice).toLocaleString()}` : pkg.price ? `₹${Number(pkg.price).toLocaleString()}` : null}
+              />
+              <InfoBlock
+                label="Child Price"
+                value={pkg.pricing?.childPrice ? `₹${Number(pkg.pricing.childPrice).toLocaleString()}` : null}
+              />
+              {pkg.priceLabel && <InfoBlock label="Price per Person" value={`₹${pkg.priceLabel}`} />}
             </div>
-          )}
+          </div>
 
+          {/* Highlights */}
           {pkg.highlights?.filter(Boolean).length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Highlights</p>
@@ -205,31 +178,48 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
             </div>
           )}
 
-          {pkg.inclusions?.filter(Boolean).length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Inclusions</p>
-              <ul className="space-y-1">
-                {pkg.inclusions.filter(Boolean).map((item, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-green-700">
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+          {/* Inclusions + Exclusions */}
+          {(pkg.inclusions?.filter(Boolean).length > 0 || pkg.exclusions?.filter(Boolean).length > 0) && (
+            <div className="grid grid-cols-2 gap-4">
+              {pkg.inclusions?.filter(Boolean).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Inclusions</p>
+                  <ul className="space-y-1">
+                    {pkg.inclusions.filter(Boolean).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-green-700">
+                        <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {pkg.exclusions?.filter(Boolean).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Exclusions</p>
+                  <ul className="space-y-1">
+                    {pkg.exclusions.filter(Boolean).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-red-600">
+                        <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
+          {/* Itinerary */}
           {pkg.itinerary?.filter((d) => d.title).length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Itinerary</p>
               <div className="space-y-2">
                 {pkg.itinerary.filter((d) => d.title).map((day, i) => (
                   <div key={i} className="bg-gray-50 rounded-xl p-3">
-                    <p className="text-sm font-semibold text-gray-800">
-                      Day {day.day}: {day.title}
-                    </p>
+                    <p className="text-sm font-semibold text-gray-800">Day {day.day}: {day.title}</p>
                     {day.points?.filter(Boolean).length > 0 && (
-                      <ul className="mt-1 space-y-0.5">
+                      <ul className="mt-1.5 space-y-0.5">
                         {day.points.filter(Boolean).map((pt, pi) => (
                           <li key={pi} className="text-xs text-gray-600 flex items-start gap-1.5">
                             <span className="w-1 h-1 rounded-full bg-gray-400 flex-shrink-0 mt-1.5" />
@@ -244,36 +234,80 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
             </div>
           )}
 
+          {/* Hotel & Transport */}
+          {(pkg.hotelDetails?.hotelName || pkg.transportDetails?.flightIncluded || pkg.transportDetails?.busIncluded || pkg.transportDetails?.cabIncluded || pkg.transportDetails?.vehicleType) && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Hotel & Transport</p>
+              <div className="grid grid-cols-2 gap-3">
+                {pkg.hotelDetails?.hotelName && (
+                  <>
+                    <InfoBlock label="Hotel" value={pkg.hotelDetails.hotelName} />
+                    <InfoBlock label="Hotel Category" value={pkg.hotelDetails.hotelCategory} />
+                    <InfoBlock label="Room Type" value={pkg.hotelDetails.roomType} />
+                    <InfoBlock label="Meal Plan" value={pkg.hotelDetails.mealPlan} />
+                  </>
+                )}
+                {pkg.transportDetails && (
+                  <div className="col-span-2 bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 uppercase mb-1">Transport</p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {pkg.transportDetails.flightIncluded && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">Flight ✓</span>}
+                      {pkg.transportDetails.busIncluded && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">Bus ✓</span>}
+                      {pkg.transportDetails.cabIncluded && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">Cab ✓</span>}
+                      {pkg.transportDetails.vehicleType && <span className="text-gray-700">{pkg.transportDetails.vehicleType}</span>}
+                      {pkg.transportDetails.pickupDrop && <span className="text-gray-700">{pkg.transportDetails.pickupDrop}</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Availability */}
+          {pkg.availability && (pkg.availability.startDate || pkg.availability.availableSeats) && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Availability</p>
+              <div className="grid grid-cols-2 gap-3">
+                {pkg.availability.startDate && <InfoBlock label="Start Date" value={formatDate(pkg.availability.startDate)} />}
+                {pkg.availability.endDate && <InfoBlock label="End Date" value={formatDate(pkg.availability.endDate)} />}
+                {pkg.availability.availableSeats > 0 && <InfoBlock label="Available Seats" value={String(pkg.availability.availableSeats)} />}
+                {pkg.availability.bookingDeadline && <InfoBlock label="Booking Deadline" value={formatDate(pkg.availability.bookingDeadline)} />}
+              </div>
+            </div>
+          )}
+
+          {/* Policies */}
+          {(pkg.policies?.cancellationPolicy || pkg.policies?.refundPolicy || pkg.policies?.terms) && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Policies</p>
+              <div className="space-y-2">
+                {pkg.policies.cancellationPolicy && (
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-0.5">Cancellation Policy</p>
+                    <p className="text-sm text-gray-700">{pkg.policies.cancellationPolicy}</p>
+                  </div>
+                )}
+                {pkg.policies.refundPolicy && (
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-0.5">Refund Policy</p>
+                    <p className="text-sm text-gray-700">{pkg.policies.refundPolicy}</p>
+                  </div>
+                )}
+                {pkg.policies.terms && (
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-0.5">Terms & Conditions</p>
+                    <p className="text-sm text-gray-700">{pkg.policies.terms}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Previous admin note */}
           {pkg.adminNotes && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p className="text-xs font-semibold text-amber-700 mb-1">Previous Admin Note</p>
               <p className="text-sm text-amber-800">{pkg.adminNotes}</p>
-            </div>
-          )}
-
-          {action === "approve" && (
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-              <p className="text-sm font-semibold text-gray-800 mb-3">Publish Options</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Badge</label>
-                  <select value={badge} onChange={(e) => setBadge(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-teal-400">
-                    <option value="Popular">Popular</option>
-                    <option value="Trending">Trending</option>
-                    <option value="New">New</option>
-                    <option value="">None</option>
-                  </select>
-                </div>
-                <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm cursor-pointer">
-                  <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="accent-teal-600" />
-                  Featured
-                </label>
-                <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm cursor-pointer">
-                  <input type="checkbox" checked={isTrending} onChange={(e) => setIsTrending(e.target.checked)} className="accent-teal-600" />
-                  Trending
-                </label>
-              </div>
             </div>
           )}
 
@@ -288,7 +322,6 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
               </div>
             )}
 
-            {/* Action buttons */}
             <div className="flex flex-wrap gap-2">
               {[
                 { value: "approve", label: "Approve", icon: CheckCircle, style: "border-green-300 bg-green-50 text-green-700 hover:bg-green-100" },
@@ -299,9 +332,7 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
                   key={value}
                   type="button"
                   onClick={() => { setAction(value); setError(""); }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${style} ${
-                    action === value ? "ring-2 ring-offset-1 ring-current" : ""
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${style} ${action === value ? "ring-2 ring-offset-1 ring-current" : ""}`}
                 >
                   <Icon className="w-4 h-4" />
                   {label}
@@ -309,30 +340,6 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
               ))}
             </div>
 
-            {/* Category selector (approve only) */}
-            {action === "approve" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  <Tag className="w-3.5 h-3.5 inline mr-1" />
-                  Assign to Category <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={approvedCategory}
-                    onChange={(e) => setApprovedCategory(e.target.value)}
-                    className="w-full appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                  >
-                    <option value="">Select a category…</option>
-                    {categories.map((c) => (
-                      <option key={c._id} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-            )}
-
-            {/* Note */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {action === "approve" ? "Note for operator (optional)" : "Note for operator (required)"}
@@ -343,12 +350,12 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
                 rows={3}
                 placeholder={
                   action === "needs_revision"
-                    ? "Explain what needs to be fixed, e.g. 'Hero image is low quality, please re-upload'…"
+                    ? "Explain what needs to be fixed…"
                     : action === "reject"
                     ? "Explain why this package is being rejected…"
                     : "Optional note for the operator…"
                 }
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               />
             </div>
 
@@ -356,7 +363,7 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -364,11 +371,9 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
                 type="submit"
                 disabled={loading || !action}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  action === "approve"
-                    ? "bg-green-500 hover:bg-green-600 text-white"
-                    : action === "reject"
-                    ? "bg-red-500 hover:bg-red-600 text-white"
-                    : "bg-orange-500 hover:bg-orange-600 text-white"
+                  action === "approve" ? "bg-green-500 hover:bg-green-600 text-white"
+                  : action === "reject" ? "bg-red-500 hover:bg-red-600 text-white"
+                  : "bg-orange-500 hover:bg-orange-600 text-white"
                 }`}
               >
                 {loading ? (
@@ -379,12 +384,11 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
                   <><XCircle className="w-4 h-4" /> Reject Package</>
                 ) : action === "needs_revision" ? (
                   <><MessageSquare className="w-4 h-4" /> Request Revision</>
-                ) : (
-                  "Submit Decision"
-                )}
+                ) : "Submit Decision"}
               </button>
             </div>
           </form>
+
         </div>
       </div>
     </div>
@@ -397,18 +401,13 @@ export default function PackageReview() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [categories, setCategories] = useState([]);
-
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("PENDING");
   const [page, setPage] = useState(1);
   const [reviewPkg, setReviewPkg] = useState(null);
+  const [counts, setCounts] = useState({});
   const limit = 20;
-
-  useEffect(() => {
-    categoriesAPI.getAll().then((r) => setCategories(r.data.categories || [])).catch(() => {});
-  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 300);
@@ -434,6 +433,19 @@ export default function PackageReview() {
 
   useEffect(() => { fetchPackages(); }, [fetchPackages]);
 
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const statuses = ["PENDING", "NEEDS_REVISION", "APPROVED", "REJECTED", "DRAFT", "EXPIRED"];
+        const results = await Promise.all(statuses.map((s) => adminPackagesAPI.getAll({ status: s, limit: 1 })));
+        const c = {};
+        statuses.forEach((s, i) => { c[s] = results[i].data.total; });
+        setCounts(c);
+      } catch {}
+    };
+    fetchCounts();
+  }, [packages]);
+
   const handleReviewed = (updated) => {
     setPackages((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
   };
@@ -450,23 +462,6 @@ export default function PackageReview() {
   };
 
   const totalPages = Math.ceil(total / limit);
-
-  // Counts per status for tabs
-  const [counts, setCounts] = useState({});
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const statuses = ["PENDING", "NEEDS_REVISION", "APPROVED", "REJECTED", "DRAFT", "EXPIRED"];
-        const results = await Promise.all(
-          statuses.map((s) => adminPackagesAPI.getAll({ status: s, limit: 1 }))
-        );
-        const c = {};
-        statuses.forEach((s, i) => { c[s] = results[i].data.total; });
-        setCounts(c);
-      } catch {}
-    };
-    fetchCounts();
-  }, [packages]); // refresh counts when packages change
 
   return (
     <div className="space-y-6">
@@ -503,11 +498,7 @@ export default function PackageReview() {
           >
             {label}
             {value !== "all" && counts[value] !== undefined && (
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                  statusFilter === value ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-                }`}
-              >
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${statusFilter === value ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"}`}>
                 {counts[value]}
               </span>
             )}
@@ -549,7 +540,6 @@ export default function PackageReview() {
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-5 py-3 font-semibold text-gray-600">Package</th>
                   <th className="text-left px-5 py-3 font-semibold text-gray-600">Operator</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Category</th>
                   <th className="text-left px-5 py-3 font-semibold text-gray-600">Price</th>
                   <th className="text-left px-5 py-3 font-semibold text-gray-600">Status</th>
                   <th className="text-left px-5 py-3 font-semibold text-gray-600">Submitted</th>
@@ -562,11 +552,7 @@ export default function PackageReview() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         {pkg.image_url ? (
-                          <img
-                            src={pkg.image_url}
-                            alt={pkg.title}
-                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                          />
+                          <img src={pkg.image_url} alt={pkg.title} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                             <Package className="w-4 h-4 text-gray-400" />
@@ -578,21 +564,14 @@ export default function PackageReview() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-600 text-xs">
+                    <td className="px-5 py-3.5 text-xs">
                       {pkg.operatorId ? (
                         <div>
-                          <p className="font-medium text-gray-800">
-                            {pkg.operatorId.businessName || pkg.operatorId.contactName}
-                          </p>
+                          <p className="font-medium text-gray-800">{pkg.operatorId.businessName || pkg.operatorId.contactName}</p>
                           <p className="text-gray-400">{pkg.operatorId.email}</p>
                         </div>
                       ) : (
                         <span className="text-gray-400 italic">Admin</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-600">
-                      {pkg.approvedCategory || pkg.category || (
-                        <span className="text-gray-400 italic">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3.5 font-medium text-gray-800">
@@ -641,21 +620,11 @@ export default function PackageReview() {
               Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
             </p>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <span className="px-3 py-1 text-sm font-medium text-gray-700">{page} / {totalPages}</span>
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -667,7 +636,6 @@ export default function PackageReview() {
       {reviewPkg && (
         <ReviewModal
           pkg={reviewPkg}
-          categories={categories}
           onClose={() => setReviewPkg(null)}
           onReviewed={handleReviewed}
         />
