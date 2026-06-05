@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { operatorAuthAPI } from "../services/api";
 
 const OperatorAuthContext = createContext(null);
@@ -14,29 +21,35 @@ export function OperatorAuthProvider({ children }) {
   });
   const [operatorLoading, setOperatorLoading] = useState(true);
 
-  // Rehydrate session on mount
+  // Guard: only run session restore once on mount
+  const didRestoreRef = useRef(false);
+
   useEffect(() => {
+    if (didRestoreRef.current) return;
+    didRestoreRef.current = true;
+
     const token = localStorage.getItem("operatorToken");
-    if (token) {
-      operatorAuthAPI
-        .getMe()
-        .then((res) => {
-          setOperator(res.data.operator);
-          localStorage.setItem(
-            "operatorUser",
-            JSON.stringify(res.data.operator)
-          );
-        })
-        .catch(() => {
-          localStorage.removeItem("operatorToken");
-          localStorage.removeItem("operatorUser");
-          setOperator(null);
-        })
-        .finally(() => setOperatorLoading(false));
-    } else {
+    if (!token) {
       setOperatorLoading(false);
+      return;
     }
-  }, []);
+
+    operatorAuthAPI
+      .getMe()
+      .then((res) => {
+        const op = res.data.operator;
+        setOperator(op);
+        localStorage.setItem("operatorUser", JSON.stringify(op));
+      })
+      .catch(() => {
+        localStorage.removeItem("operatorToken");
+        localStorage.removeItem("operatorUser");
+        setOperator(null);
+      })
+      .finally(() => {
+        setOperatorLoading(false);
+      });
+  }, []); // empty deps — runs exactly once on mount
 
   const login = async (email, password) => {
     const res = await operatorAuthAPI.login({ email, password });
@@ -62,20 +75,28 @@ export function OperatorAuthProvider({ children }) {
     return operatorData;
   };
 
-  const refreshOperator = async () => {
+  const refreshOperator = useCallback(async () => {
     try {
       const res = await operatorAuthAPI.getMe();
-      setOperator(res.data.operator);
-      localStorage.setItem("operatorUser", JSON.stringify(res.data.operator));
-      return res.data.operator;
+      const updated = res.data.operator;
+      setOperator(updated);
+      localStorage.setItem("operatorUser", JSON.stringify(updated));
+      return updated;
     } catch {
       return null;
     }
-  };
+  }, []);
 
   return (
     <OperatorAuthContext.Provider
-      value={{ operator, operatorLoading, login, logout, register, refreshOperator }}
+      value={{
+        operator,
+        operatorLoading,
+        login,
+        logout,
+        register,
+        refreshOperator,
+      }}
     >
       {children}
     </OperatorAuthContext.Provider>

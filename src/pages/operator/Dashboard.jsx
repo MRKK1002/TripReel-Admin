@@ -11,27 +11,21 @@ import {
 } from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
 
-const ACTIVE_STATES = ["ACTIVE_PROBATION", "ACTIVE_FULL"];
-
-const STATE_LABELS = {
-  ACTIVE_PROBATION: "Active (Probation)",
-  ACTIVE_FULL: "Active",
-};
-
 export default function OperatorDashboard() {
   const { operator, operatorLoading } = useOperatorAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!operatorLoading && operator) {
-      if (!ACTIVE_STATES.includes(operator.onboardingState)) {
-        navigate("/operator/status", { replace: true });
-      }
+    if (operatorLoading) return;
+    if (!operator) {
+      navigate("/login", { replace: true });
+      return;
     }
-    if (!operatorLoading && !operator) {
-      navigate("/operator/login", { replace: true });
+    // Only redirect if NOT approved — approved operators belong on this page
+    if (operator.onboardingState !== "APPROVED") {
+      navigate("/operator/status", { replace: true });
     }
-  }, [operator, operatorLoading, navigate]);
+  }, [operator?.onboardingState, operatorLoading, navigate]);
 
   if (operatorLoading || !operator) {
     return (
@@ -41,7 +35,7 @@ export default function OperatorDashboard() {
     );
   }
 
-  const isProbation = operator.onboardingState === "ACTIVE_PROBATION";
+  const isProbation = false; // All approved operators have full access
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -56,7 +50,9 @@ export default function OperatorDashboard() {
             <div className="flex items-center gap-2 mt-3">
               <CheckCircle className="w-4 h-4 text-teal-200" />
               <span className="text-sm text-teal-100">
-                {isProbation ? "Account active — probationary period" : "Account fully active"}
+                {isProbation
+                  ? "Account active — probationary period"
+                  : "Account fully active"}
               </span>
             </div>
           </div>
@@ -73,9 +69,12 @@ export default function OperatorDashboard() {
             <span className="text-white text-xs font-bold">!</span>
           </div>
           <div>
-            <p className="text-sm font-medium text-amber-800">Probationary Period Active</p>
+            <p className="text-sm font-medium text-amber-800">
+              Probationary Period Active
+            </p>
             <p className="text-sm text-amber-700 mt-0.5">
-              Your first 5 bookings are monitored. Full access unlocks after successful completion.
+              Your first 5 bookings are monitored. Full access unlocks after
+              successful completion.
             </p>
           </div>
         </div>
@@ -91,7 +90,9 @@ export default function OperatorDashboard() {
             <Package className="w-5 h-5" />
           </div>
           <h3 className="font-semibold text-gray-800 mb-1">My Packages</h3>
-          <p className="text-sm text-gray-500">Create and manage your travel packages</p>
+          <p className="text-sm text-gray-500">
+            Create and manage your travel packages
+          </p>
           <div className="flex items-center gap-1 text-teal-500 text-sm font-medium mt-3">
             Go to packages <ArrowRight className="w-3.5 h-3.5" />
           </div>
@@ -111,13 +112,20 @@ export default function OperatorDashboard() {
             color: "text-amber-500 bg-amber-50",
           },
         ].map(({ icon: Icon, title, desc, color }) => (
-          <div key={title} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`}>
+          <div
+            key={title}
+            className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm"
+          >
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`}
+            >
               <Icon className="w-5 h-5" />
             </div>
             <h3 className="font-semibold text-gray-800 mb-1">{title}</h3>
             <p className="text-sm text-gray-500">{desc}</p>
-            <p className="text-xs text-teal-500 font-medium mt-3">Coming soon</p>
+            <p className="text-xs text-teal-500 font-medium mt-3">
+              Coming soon
+            </p>
           </div>
         ))}
       </div>
@@ -135,7 +143,9 @@ export default function OperatorDashboard() {
             ["PAN", operator.pan || "—"],
           ].map(([label, value]) => (
             <div key={label} className="flex flex-col gap-0.5">
-              <span className="text-xs text-gray-400 uppercase tracking-wide">{label}</span>
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                {label}
+              </span>
               <span className="text-gray-700 font-medium">{value}</span>
             </div>
           ))}

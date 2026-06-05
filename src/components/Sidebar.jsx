@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -15,6 +14,9 @@ import {
   Layers,
   ClipboardList,
   Receipt,
+  CalendarCheck,
+  Settings,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -44,10 +46,13 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
   const bottomMenuItems = [
     { id: "wishlists", label: "Wishlists", icon: Heart },
-    { id: "bookings", label: "Bookings", icon: Receipt },
+    { id: "bookings", label: "Old Bookings", icon: Receipt },
+    { id: "trip-bookings", label: "Trip Bookings", icon: CalendarCheck },
+    { id: "operator-wallets", label: "Operator Wallets", icon: Wallet },
     { id: "my-trips", label: "My Trips", icon: Briefcase },
     { id: "users", label: "User List", icon: Users },
     { id: "operators", label: "Operators", icon: Building2 },
+    { id: "platform-settings", label: "Platform Settings", icon: Settings },
   ];
 
   const handleMenuClick = (id) => {

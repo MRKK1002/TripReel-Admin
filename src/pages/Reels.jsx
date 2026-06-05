@@ -17,6 +17,7 @@ import {
 import Modal from "../components/Modal";
 import { reelsAPI } from "../services/api";
 import { useApi } from "../hooks/useApi";
+import { COUNTRIES, INDIA_STATES } from "../constants/locations";
 
 const BADGES = ["Popular", "Trending", "New", "Featured", ""];
 
@@ -30,6 +31,9 @@ const badgeColors = {
 const emptyForm = {
   title: "",
   location: "",
+  country: "India",
+  state: "",
+  city: "",
   badge: "Popular",
   video: "",
   thumbnail: "",
@@ -152,9 +156,11 @@ function ReelCard({ reel, onEdit, onDelete, onToggle }) {
         <p className="font-semibold text-gray-800 text-sm truncate">
           {reel.title}
         </p>
-        {reel.location && (
+        {(reel.city || reel.state || reel.country || reel.location) && (
           <div className="flex items-center gap-1 text-gray-400 text-xs">
-            <MapPin className="w-3 h-3" /> {reel.location}
+            <MapPin className="w-3 h-3" />
+            {[reel.city, reel.state, reel.country].filter(Boolean).join(", ") ||
+              reel.location}
           </div>
         )}
         {reel.user?.name && (
@@ -243,6 +249,9 @@ export default function Reels() {
     setForm({
       title: reel.title,
       location: reel.location || "",
+      country: reel.country || "India",
+      state: reel.state || "",
+      city: reel.city || "",
       badge: reel.badge || "",
       video: reel.video || "",
       thumbnail: reel.thumbnail || "",
@@ -292,7 +301,14 @@ export default function Reels() {
     await run(async () => {
       const fd = new FormData();
       fd.append("title", form.title);
-      fd.append("location", form.location);
+      // Build display location string from structured fields
+      const locationParts = [form.city, form.state, form.country].filter(
+        Boolean,
+      );
+      fd.append("location", locationParts.join(", ") || form.location || "");
+      fd.append("country", form.country || "");
+      fd.append("state", form.state || "");
+      fd.append("city", form.city || "");
       fd.append("badge", form.badge);
       fd.append("isActive", form.isActive);
       fd.append("order", form.order);
@@ -561,29 +577,74 @@ export default function Reels() {
             />
           </div>
 
-          {/* Title + Location */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Title *
+            </label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="e.g. Street Food Crawl"
+              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+
+          {/* Location: Country / State / City */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title *
+                Country *
               </label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-                placeholder="e.g. Street Food Crawl"
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
+              <select
+                value={form.country}
+                onChange={(e) => {
+                  set("country", e.target.value);
+                  if (e.target.value !== "India") set("state", "");
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                <option value="">Select country</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div>
+
+            {form.country === "India" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  State
+                </label>
+                <select
+                  value={form.state}
+                  onChange={(e) => set("state", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                >
+                  <option value="">Select state</option>
+                  {INDIA_STATES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className={form.country === "India" ? "" : "col-span-2"}>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
+                City
               </label>
               <input
                 type="text"
-                value={form.location}
-                onChange={(e) => set("location", e.target.value)}
-                placeholder="e.g. Delhi"
+                value={form.city}
+                onChange={(e) => set("city", e.target.value)}
+                placeholder={
+                  form.country === "India" ? "e.g. Panaji" : "e.g. Dubai"
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
