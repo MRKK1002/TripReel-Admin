@@ -291,3 +291,11 @@ export const operatorWalletAPI = {
   getTransactions: (params) =>
     operatorApi.get("/wallet/transactions", { params }),
 };
+
+// Operator — coupons
+export const operatorCouponsAPI = {
+  getMine: (params) => operatorApi.get("/coupons/operator/mine", { params }),
+  create: (data) => operatorApi.post("/coupons", data),
+  update: (id, data) => operatorApi.put(`/coupons/${id}`, data),
+  delete: (id) => operatorApi.delete(`/coupons/${id}`),
+};
