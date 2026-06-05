@@ -141,6 +141,12 @@ function DetailModal({ booking, onClose }) {
                 <span className="text-gray-500">GST ({p.gstPercent}%)</span>
                 <span>{fmtMoney(p.gstAmount)}</span>
               </div>
+              {p.discountAmount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span className="text-xs">Coupon ({p.couponCode})</span>
+                  <span className="text-xs">-{fmtMoney(p.discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold border-t border-gray-200 pt-1 mt-1">
                 <span>Total Paid</span>
                 <span>{fmtMoney(p.totalAmount)}</span>
@@ -156,11 +162,43 @@ function DetailModal({ booking, onClose }) {
             </div>
           </div>
 
+          {/* Travelers */}
+          {booking.travelers?.length > 0 && (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">
+                Travelers ({booking.travelers.length})
+              </p>
+              <div className="space-y-2">
+                {booking.travelers.map((t, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm">
+                    <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-700 text-xs flex items-center justify-center font-bold flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="font-medium text-gray-800">
+                      {t.name || "—"}
+                    </span>
+                    {t.gender && (
+                      <span className="text-xs text-gray-400">{t.gender}</span>
+                    )}
+                    {t.age > 0 && (
+                      <span className="text-xs text-gray-400">Age {t.age}</span>
+                    )}
+                    {t.age > 0 && t.age <= 7 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full">
+                        Child
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Status notes */}
-          {booking.status === "PENDING" && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-800">
-              Admin will confirm this booking. Your earnings will be credited
-              once confirmed.
+          {booking.status === "CONFIRMED" && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800">
+              Booking confirmed. Earnings will be released 2 days after trip
+              ends.
             </div>
           )}
           {booking.status === "CANCELLED" && booking.cancelReason && (
