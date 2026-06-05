@@ -38,6 +38,7 @@ import OperatorListings from "./pages/operator/Listings";
 import OperatorBatches from "./pages/operator/Batches";
 import OperatorBookings from "./pages/operator/Bookings";
 import OperatorWallet from "./pages/operator/Wallet";
+import OperatorCoupons from "./pages/operator/Coupons";
 
 // ── Spinner helper ────────────────────────────────────────────────────────────
 function Spinner() {
@@ -229,6 +230,16 @@ function App() {
                 <OperatorRoute requireApproved>
                   <OperatorLayout>
                     <OperatorWallet />
+                  </OperatorLayout>
+                </OperatorRoute>
+              }
+            />
+            <Route
+              path="/operator/coupons"
+              element={
+                <OperatorRoute requireApproved>
+                  <OperatorLayout>
+                    <OperatorCoupons />
                   </OperatorLayout>
                 </OperatorRoute>
               }

@@ -10,6 +10,7 @@ import {
   Calendar,
   Wallet,
   Layers,
+  Tag,
 } from "lucide-react";
 import { useOperatorAuth } from "../context/OperatorAuthContext";
 
@@ -25,6 +26,7 @@ export default function OperatorSidebar({ sidebarOpen, setSidebarOpen }) {
         { id: "operator/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "operator/packages", label: "My Packages", icon: Package },
         { id: "operator/batches", label: "Manage Batches", icon: Calendar },
+        { id: "operator/coupons", label: "Coupons", icon: Tag },
         { id: "operator/bookings", label: "Bookings", icon: ClipboardList },
         { id: "operator/wallet", label: "My Wallet", icon: Wallet },
         { id: "operator/listings", label: "My Listings", icon: Layers },
