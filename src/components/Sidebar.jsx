@@ -151,6 +151,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       items: [
         { id: "platform-settings", label: "Platform Settings", icon: Settings },
         { id: "broadcast", label: "Broadcast", icon: Megaphone },
+        { id: "campaigns", label: "Campaigns", icon: Megaphone },
         {
           id: "notifications",
           label: "Notifications",
@@ -181,6 +182,15 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
         .markAdminSeen(sectionMap[id])
         .then(fetchCounts)
         .catch(() => {});
+    }
+    // Also mark notifications as read when visiting notifications page
+    if (id === "notifications") {
+      import("../services/api").then(({ notificationsAdminAPI }) => {
+        notificationsAdminAPI
+          .markAllRead()
+          .then(fetchCounts)
+          .catch(() => {});
+      });
     }
   };
 
@@ -277,6 +287,22 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
                     <span className="font-semibold text-xs uppercase tracking-wider flex-1 text-left">
                       {group.label}
                     </span>
+                    {!isExpanded &&
+                      (() => {
+                        const groupTotal = group.items.reduce(
+                          (sum, item) =>
+                            sum +
+                            (item.badgeKey
+                              ? badgeCounts[item.badgeKey] || 0
+                              : 0),
+                          0,
+                        );
+                        return groupTotal > 0 ? (
+                          <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
+                            {groupTotal > 99 ? "99+" : groupTotal}
+                          </span>
+                        ) : null;
+                      })()}
                     {isExpanded ? (
                       <ChevronDown className="w-4 h-4" />
                     ) : (

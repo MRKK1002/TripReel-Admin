@@ -29,10 +29,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      // Only redirect to login if no operator session exists either
+      // Only redirect if no operator session exists
       const hasOperatorSession = localStorage.getItem("operatorToken");
       if (!hasOperatorSession) {
-        window.location.href = "/login";
+        window.location.href = "/admin-login";
       }
     }
     return Promise.reject(error);
@@ -214,6 +214,16 @@ export const sidebarCountsAPI = {
     operatorApi.post("/sidebar-counts/operator/seen", { section }),
 };
 
+// ── Campaigns ─────────────────────────────────────────────────────────────────
+export const campaignsAPI = {
+  getAll: () => api.get("/campaigns"),
+  getActive: () => api.get("/campaigns/active"),
+  create: (data) => api.post("/campaigns", data),
+  update: (id, data) => api.put(`/campaigns/${id}`, data),
+  delete: (id) => api.delete(`/campaigns/${id}`),
+  trackClick: (id) => api.post(`/campaigns/click/${id}`),
+};
+
 // ── Admin Package Review API ──────────────────────────────────────────────────
 export const adminPackagesAPI = {
   getAll: (params) => api.get("/packages/admin/all", { params }),
@@ -383,4 +393,6 @@ export const operatorChatAPI = {
   getMessages: (id) => operatorApi.get(`/chat/operator/${id}/messages`),
   sendMessage: (id, data) =>
     operatorApi.post(`/chat/operator/${id}/messages`, data),
+  sendToUser: (userId, data) =>
+    operatorApi.post(`/chat/operator/send-to-user/${userId}`, data),
 };

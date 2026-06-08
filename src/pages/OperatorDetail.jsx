@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   ArrowLeft,
   ExternalLink,
@@ -256,6 +257,7 @@ export default function OperatorDetail() {
       setOperator(res.data.operator);
       setNote("");
       setActionSuccess(`Status updated to "${STATE_LABELS[newState]}".`);
+      toast.success(`Operator ${STATE_LABELS[newState].toLowerCase()}`);
     } catch (err) {
       setActionError(err.response?.data?.message || "Action failed.");
     } finally {

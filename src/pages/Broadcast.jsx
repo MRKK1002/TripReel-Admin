@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import {
   Send,
   Megaphone,
@@ -269,6 +270,7 @@ export default function Broadcast() {
         success: true,
         message: `Sent to ${res.data?.sent || "all"} users`,
       });
+      toast.success(`Broadcast sent to ${res.data?.sent || "all"} users!`);
       // Add to history
       setHistory((prev) => [
         {
@@ -287,6 +289,7 @@ export default function Broadcast() {
         success: false,
         message: err.response?.data?.message || "Failed to send",
       });
+      toast.error(err.response?.data?.message || "Failed to send broadcast");
     } finally {
       setSending(false);
     }

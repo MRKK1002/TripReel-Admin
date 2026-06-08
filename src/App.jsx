@@ -58,6 +58,7 @@ import OperatorNotifications from "./pages/operator/Notifications";
 import OperatorAnalytics from "./pages/operator/Analytics";
 import AdminNotifications from "./pages/Notifications";
 import Broadcast from "./pages/Broadcast";
+import Campaigns from "./pages/Campaigns";
 import AdminLogin from "./pages/AdminLogin";
 
 // ── Spinner helper ────────────────────────────────────────────────────────────
@@ -73,7 +74,7 @@ function Spinner() {
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/admin-login" replace />;
   if (user.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -485,6 +486,7 @@ function App() {
                         element={<AdminNotifications />}
                       />
                       <Route path="/broadcast" element={<Broadcast />} />
+                      <Route path="/campaigns" element={<Campaigns />} />
                       <Route
                         path="/operator-wallets"
                         element={<OperatorWallets />}

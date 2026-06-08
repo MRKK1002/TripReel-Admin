@@ -23,7 +23,7 @@ function Header({ setSidebarOpen }) {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/admin-login");
   };
 
   const initials = user?.name

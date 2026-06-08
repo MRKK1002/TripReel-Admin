@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { toast } from "react-toastify";
 import {
   ClipboardList,
   Package,
@@ -51,9 +52,9 @@ function daysUntil(d) {
   return Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
 // PDF DOCUMENT BUILDER VIEW
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
 function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
   // Clone all package data for editing (won't affect actual package)
   const [title, setTitle] = useState(pkg?.title || "");
@@ -93,7 +94,7 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
   const [sending, setSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState("");
 
-  // â”€â”€ Itinerary Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // "" Itinerary Helpers """""""""""""""""""""""""""""""""""""""""""""""""""""
   const addItineraryPoint = (dayIdx) => {
     const updated = [...itinerary];
     updated[dayIdx].points.push("");
@@ -116,81 +117,81 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
     ]);
   };
 
-  // â”€â”€ Generate Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // "" Generate Content """"""""""""""""""""""""""""""""""""""""""""""""""""""
   const generateContent = () => {
     let content = "";
 
     if (type === "internal") {
-      content += `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n`;
-      content += `       INTERNAL TRIP DOCUMENT\n`;
-      content += `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n`;
+      content += "======================================\n";
+      content += "       INTERNAL TRIP DOCUMENT\n";
+      content += "======================================\n\n";
     } else {
-      content += `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n`;
-      content += `         YOUR TRIP DETAILS\n`;
-      content += `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n`;
+      content += "======================================\n";
+      content += "         YOUR TRIP DETAILS\n";
+      content += "======================================\n\n";
     }
 
-    content += `ðŸ“ ${title}\n`;
-    content += `ðŸ“Œ ${location}\n`;
-    content += `ðŸ“… ${fmt(batch.startDate)}  ->  ${fmt(batch.endDate)}\n`;
-    content += `â±ï¸ ${duration}\n`;
-    content += `ðŸ’° ${fmtMoney(batch.adultPrice)}/person\n`;
-    if (batch.label) content += `ðŸ·ï¸ Batch: ${batch.label}\n`;
-    content += `\n`;
+    content += title + "\n";
+    content += location + "\n";
+    content += fmt(batch.startDate) + " -> " + fmt(batch.endDate) + "\n";
+    content += duration + "\n";
+    content += fmtMoney(batch.adultPrice) + "/person\n";
+    if (batch.label) content += "Batch: " + batch.label + "\n";
+    content += "\n";
 
     // Transport
     if (type === "internal" || vehicleNo || pickupPoint) {
-      content += `â”€â”€ TRANSPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
+      content += "--- TRANSPORT ---\n";
       if (transport.vehicleType)
-        content += `Vehicle Type: ${transport.vehicleType}\n`;
-      if (vehicleNo) content += `Vehicle No: ${vehicleNo}\n`;
-      if (driverName) content += `Driver: ${driverName}\n`;
-      if (driverPhone) content += `Driver Phone: ${driverPhone}\n`;
-      if (pickupPoint) content += `Pickup: ${pickupPoint}\n`;
-      if (transport.flightIncluded) content += `âœˆï¸ Flight Included\n`;
-      if (transport.cabIncluded) content += `ðŸš— Cab Included\n`;
-      content += `\n`;
+        content += "Vehicle Type: " + transport.vehicleType + "\n";
+      if (vehicleNo) content += "Vehicle No: " + vehicleNo + "\n";
+      if (driverName) content += "Driver: " + driverName + "\n";
+      if (driverPhone) content += "Driver Phone: " + driverPhone + "\n";
+      if (pickupPoint) content += "Pickup: " + pickupPoint + "\n";
+      if (transport.flightIncluded) content += "Flight Included\n";
+      if (transport.cabIncluded) content += "Cab Included\n";
+      content += "\n";
     }
 
     // Hotel
     if (hotel.hotelName) {
-      content += `â”€â”€ HOTEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
-      content += `ðŸ¨ ${hotel.hotelName}`;
-      if (hotel.hotelCategory) content += ` (${hotel.hotelCategory})`;
-      content += `\n`;
-      if (hotel.roomType) content += `Room: ${hotel.roomType}\n`;
-      if (hotel.mealPlan) content += `Meals: ${hotel.mealPlan}\n`;
-      content += `\n`;
+      content += "--- HOTEL ---\n";
+      content += hotel.hotelName;
+      if (hotel.hotelCategory) content += " (" + hotel.hotelCategory + ")";
+      content += "\n";
+      if (hotel.roomType) content += "Room: " + hotel.roomType + "\n";
+      if (hotel.mealPlan) content += "Meals: " + hotel.mealPlan + "\n";
+      content += "\n";
     }
 
     // Itinerary
     if (itinerary.length > 0) {
-      content += `â”€â”€ ITINERARY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
+      content += "--- ITINERARY ---\n";
       itinerary.forEach((day) => {
-        content += `\nDay ${day.day}: ${day.title}\n`;
+        content += "\nDay " + day.day + ": " + day.title + "\n";
         day.points.forEach((p) => {
-          if (p) content += `  â€¢ ${p}\n`;
+          if (p) content += "  - " + p + "\n";
         });
       });
-      content += `\n`;
+      content += "\n";
     }
 
     // Inclusions
     if (inclusions.length > 0) {
-      content += `â”€â”€ INCLUSIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
+      content += "--- INCLUSIONS ---\n";
       inclusions.forEach((inc) => {
-        if (inc) content += `âœ“ ${inc}\n`;
+        if (inc) content += "+ " + inc + "\n";
       });
-      content += `\n`;
+      content += "\n";
     }
 
     // Exclusions
     if (exclusions.length > 0) {
-      content += `â”€â”€ EXCLUSIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
+      content += "--- EXCLUSIONS ---\n";
       exclusions.forEach((exc) => {
-        if (exc) content += `âœ— ${exc}\n`;
+        if (exc) content += "- " + exc + "\n";
       });
-      content += `\n`;
+      content += "\n";
     }
 
     // Internal: Traveler list
@@ -199,31 +200,55 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
         (s, b) => s + (b.travelers?.length || b.seats || 1),
         0,
       );
-      content += `â”€â”€ TRAVELERS (${totalPax} total) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
+      content += "--- TRAVELERS (" + totalPax + " total) ---\n";
       batchBookings.forEach((booking, idx) => {
-        content += `\n#${idx + 1} ${booking.userId?.name || "User"} (${booking.bookingId}) - ${booking.status}\n`;
-        content += `   Phone: ${booking.userId?.phone || "-"} | Amount: ${fmtMoney(booking.pricing?.operatorAmount)}\n`;
+        content +=
+          "\n#" +
+          (idx + 1) +
+          " " +
+          (booking.userId?.name || "User") +
+          " (" +
+          booking.bookingId +
+          ") - " +
+          booking.status +
+          "\n";
+        content +=
+          "   Phone: " +
+          (booking.userId?.phone || "-") +
+          " | Amount: " +
+          fmtMoney(booking.pricing?.operatorAmount) +
+          "\n";
         booking.travelers?.forEach((t, i) => {
-          content += `   ${i + 1}. ${t.name || "-"} | ${t.gender || "-"} | Age ${t.age || "-"}\n`;
+          content +=
+            "   " +
+            (i + 1) +
+            ". " +
+            (t.name || "-") +
+            " | " +
+            (t.gender || "-") +
+            " | Age " +
+            (t.age || "-") +
+            "\n";
         });
       });
-      content += `\n`;
+      content += "\n";
     }
 
     // Special notes
     if (specialNotes) {
-      content += `â”€â”€ IMPORTANT NOTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
-      content += `${specialNotes}\n\n`;
+      content += "--- IMPORTANT NOTES ---\n";
+      content += specialNotes + "\n\n";
     }
 
     // Extra fields
     extraFields.forEach((f) => {
-      if (f.label && f.value) content += `${f.label}: ${f.value}\n`;
+      if (f.label && f.value) content += f.label + ": " + f.value + "\n";
     });
 
     if (type === "user") {
-      content += `\nâ”€â”€ CONTACT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n`;
-      content += `For any queries, please reach out via TripReel chat.\nHave a great trip! ðŸŽ‰\n`;
+      content += "\n--- CONTACT ---\n";
+      content +=
+        "For any queries, please reach out via TripReel chat.\nHave a great trip!\n";
     }
 
     return content;
@@ -250,15 +275,17 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
         const userId = booking.userId?._id || booking.userId;
         if (!userId || booking.status === "CANCELLED") continue;
         try {
-          await operatorChatAPI.sendMessage(userId, {
-            text: `ðŸ“„ Trip Details - ${title}\n\n${content}`,
+          await operatorChatAPI.sendToUser(userId, {
+            text: `" Trip Details - ${title}\n\n${content}`,
           });
           sentCount++;
         } catch {}
       }
-      setSendSuccess(`âœ… Sent to ${sentCount} user(s) via chat!`);
+      setSendSuccess(` Sent to ${sentCount} user(s) via chat!`);
+      toast.success(`Document sent to ${sentCount} user(s)!`);
     } catch {
-      setSendSuccess("âŒ Failed to send. Try again.");
+      setSendSuccess(" Failed to send. Try again.");
+      toast.error("Failed to send document");
     } finally {
       setSending(false);
     }
@@ -277,8 +304,8 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">
             {type === "internal"
-              ? "ðŸ“‹ Internal Trip Document"
-              : "ðŸ“„ User Trip Document"}
+              ? "Internal Trip Document"
+              : "User Trip Document"}
           </h1>
           <p className="text-sm text-gray-500">
             {title} {"\u00B7"} {fmt(batch.startDate)} {"\u2192"}{" "}
@@ -316,7 +343,7 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
       )}
 
       <p className="text-sm text-gray-500 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-        ðŸ’¡ Edit anything below - changes are only for this document, not your
+        'Edit anything below - changes are only for this document, not your
         actual package. Add points, modify details, include extra info.
       </p>
 
@@ -529,7 +556,7 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
             <div className="space-y-1 ml-4">
               {day.points.map((point, pIdx) => (
                 <div key={pIdx} className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">â€¢</span>
+                  <span className="text-xs text-gray-400"></span>
                   <input
                     value={point}
                     onChange={(e) =>
@@ -573,7 +600,7 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
           </div>
           {inclusions.map((inc, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-green-500 text-xs">âœ“</span>
+              <span className="text-green-500 text-xs">"</span>
               <input
                 value={inc}
                 onChange={(e) => {
@@ -608,7 +635,7 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
           </div>
           {exclusions.map((exc, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-red-400 text-xs">âœ—</span>
+              <span className="text-red-400 text-xs"></span>
               <input
                 value={exc}
                 onChange={(e) => {
@@ -673,7 +700,7 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
       {/* Special Notes + Extra Fields */}
       <section className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
         <h2 className="font-semibold text-gray-800 text-sm">
-          ðŸ“ Additional Notes & Custom Fields
+          "Additional Notes & Custom Fields
         </h2>
         <textarea
           value={specialNotes}
@@ -730,7 +757,7 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
           onClick={onBack}
           className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium"
         >
-          â† Back to Batches
+          Back to Batches
         </button>
         <div className="flex gap-2">
           <button
@@ -759,9 +786,9 @@ function DocumentBuilder({ type, batch, batchBookings, pkg, onBack }) {
   );
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
 // MAIN BOOKING MANAGEMENT PAGE
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
 export default function OperatorAnalytics() {
   const [packages, setPackages] = useState([]);
   const [allBatches, setAllBatches] = useState([]);
@@ -847,7 +874,7 @@ export default function OperatorAnalytics() {
     setDocView({ type, batch, bookings: batchBookings, pkg });
   };
 
-  // â”€â”€ Document Builder View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // "" Document Builder View """""""""""""""""""""""""""""""""""""""""""""""""
   if (docView) {
     return (
       <DocumentBuilder
@@ -860,7 +887,7 @@ export default function OperatorAnalytics() {
     );
   }
 
-  // â”€â”€ Batch Detail View (full page, not dropdown) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // "" Batch Detail View (full page, not dropdown) """""""""""""""""""""""""""
   if (selectedBatch) {
     const batch = selectedBatch;
     const pkg = getPackageForBatch(batch);
@@ -1069,7 +1096,7 @@ export default function OperatorAnalytics() {
     );
   }
 
-  // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // "" Loading """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
