@@ -12,7 +12,11 @@ import {
   Users,
   Clock,
 } from "lucide-react";
-import { operatorBatchesAPI, operatorPackagesAPI } from "../../services/api";
+import {
+  operatorBatchesAPI,
+  operatorPackagesAPI,
+  resolveImageUrl,
+} from "../../services/api";
 
 const inp =
   "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-teal-400 focus:bg-white transition-all";
@@ -356,7 +360,7 @@ function PackageBatchRow({ pkg }) {
         <div className="flex items-center gap-3 min-w-0">
           {pkg.image_url ? (
             <img
-              src={pkg.image_url}
+              src={resolveImageUrl(pkg.image_url)}
               alt={pkg.title}
               className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
             />

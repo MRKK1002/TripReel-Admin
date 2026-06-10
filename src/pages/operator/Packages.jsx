@@ -15,7 +15,11 @@ import {
   Upload,
   ImagePlus,
 } from "lucide-react";
-import { operatorPackagesAPI, operatorSettingsAPI } from "../../services/api";
+import {
+  operatorPackagesAPI,
+  operatorSettingsAPI,
+  resolveImageUrl,
+} from "../../services/api";
 import { COUNTRIES, INDIA_STATES } from "../../constants/locations";
 
 const STATUS_LABELS = {
@@ -1468,7 +1472,7 @@ export default function OperatorPackages() {
               <div className="relative h-36 bg-gray-100">
                 {pkg.image_url ? (
                   <img
-                    src={pkg.image_url}
+                    src={resolveImageUrl(pkg.image_url)}
                     alt={pkg.title}
                     className="w-full h-full object-cover"
                   />

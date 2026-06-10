@@ -11,7 +11,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
-import { adminPackagesAPI } from "../services/api";
+import { adminPackagesAPI, resolveImageUrl } from "../services/api";
 
 const STATUS_LABELS = {
   DRAFT: "Draft",
@@ -149,7 +149,7 @@ function ReviewModal({ pkg, onClose, onReviewed }) {
                       className="relative rounded-xl overflow-hidden"
                     >
                       <img
-                        src={url}
+                        src={resolveImageUrl(url)}
                         alt={`photo ${i + 1}`}
                         className="w-full h-32 object-cover"
                       />
@@ -920,7 +920,7 @@ export default function PackageReview() {
                       <div className="flex items-center gap-3">
                         {pkg.image_url ? (
                           <img
-                            src={pkg.image_url}
+                            src={resolveImageUrl(pkg.image_url)}
                             alt={pkg.title}
                             className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                           />

@@ -7,6 +7,17 @@ const isLocal =
 // const BASE_URL = isLocal ? "/api" : "https://api.tripreel.in/api";
 const BASE_URL = isLocal ? "/api" : "https://api.tripreel.in/api";
 
+export const SERVER_URL = isLocal
+  ? "http://localhost:5001"
+  : "https://api.tripreel.in";
+
+// Resolve relative image paths (e.g. /uploads/...) to full URLs
+export const resolveImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return `${SERVER_URL}${url.startsWith("/") ? url : "/" + url}`;
+};
+
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
