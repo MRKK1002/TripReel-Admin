@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -35,6 +35,8 @@ import PlatformSettings from "./pages/PlatformSettings";
 import OperatorWallets from "./pages/OperatorWallets";
 import RevenueDashboard from "./pages/RevenueDashboard";
 import CancellationSlabs from "./pages/CancellationSlabs";
+import Refunds from "./pages/Refunds";
+import Withdrawals from "./pages/Withdrawals";
 import Reports from "./pages/Reports";
 import ExperiencesNearYou from "./pages/ExperiencesNearYou";
 import PopularDestinations from "./pages/PopularDestinations";
@@ -130,7 +132,7 @@ function OperatorLayout({ children }) {
   const [bellUnread, setBellUnread] = useState(0);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadOpNotifs = useCallback(() => {
     import("./services/api").then(({ operatorNotificationsAPI }) => {
       operatorNotificationsAPI
         .getMy()
@@ -141,6 +143,33 @@ function OperatorLayout({ children }) {
         .catch(() => {});
     });
   }, []);
+
+  // Initial load + poll every 30s so the badge stays accurate
+  useEffect(() => {
+    loadOpNotifs();
+    const id = setInterval(loadOpNotifs, 30000);
+    return () => clearInterval(id);
+  }, [loadOpNotifs]);
+
+  // Opening the bell marks them read and clears the badge
+  const toggleBell = () => {
+    const next = !bellOpen;
+    setBellOpen(next);
+    if (next) {
+      loadOpNotifs();
+      if (bellUnread > 0) {
+        import("./services/api").then(({ operatorNotificationsAPI }) => {
+          operatorNotificationsAPI
+            .markAllRead()
+            .then(() => {
+              setBellUnread(0);
+              setBellNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+            })
+            .catch(() => {});
+        });
+      }
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -175,7 +204,7 @@ function OperatorLayout({ children }) {
           </div>
           <div className="relative">
             <button
-              onClick={() => setBellOpen(!bellOpen)}
+              onClick={toggleBell}
               className="p-2 hover:bg-gray-100 rounded-lg relative"
             >
               <svg
@@ -467,6 +496,7 @@ function App() {
                         element={<PlatformSettings />}
                       />
                       <Route path="/revenue" element={<RevenueDashboard />} />
+                      <Route path="/refunds" element={<Refunds />} />
                       <Route
                         path="/cancellation-slabs"
                         element={<CancellationSlabs />}
@@ -496,6 +526,7 @@ function App() {
                         path="/operator-wallets"
                         element={<OperatorWallets />}
                       />
+                      <Route path="/withdrawals" element={<Withdrawals />} />
                       <Route
                         path="*"
                         element={<Navigate to="/dashboard" replace />}

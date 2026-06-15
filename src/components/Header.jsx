@@ -1,17 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Menu, Bell, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { notificationsAdminAPI } from "../services/api";
 
 function Header({ setSidebarOpen }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [bellOpen, setBellOpen] = useState(false);
   const [bellNotifs, setBellNotifs] = useState([]);
   const [bellUnread, setBellUnread] = useState(0);
 
-  useEffect(() => {
+  const loadNotifs = useCallback(() => {
     notificationsAdminAPI
       .getMy()
       .then((res) => {
@@ -20,6 +21,36 @@ function Header({ setSidebarOpen }) {
       })
       .catch(() => {});
   }, []);
+
+  // Initial load + poll every 30s so the badge reflects new + read changes
+  useEffect(() => {
+    loadNotifs();
+    const id = setInterval(loadNotifs, 30000);
+    return () => clearInterval(id);
+  }, [loadNotifs]);
+
+  // Re-sync whenever the route changes (e.g. after visiting the full page)
+  useEffect(() => {
+    loadNotifs();
+  }, [location.pathname, loadNotifs]);
+
+  // Opening the bell = the admin has seen them → mark read and clear the badge
+  const toggleBell = () => {
+    const next = !bellOpen;
+    setBellOpen(next);
+    if (next) {
+      loadNotifs();
+      if (bellUnread > 0) {
+        notificationsAdminAPI
+          .markAllRead()
+          .then(() => {
+            setBellUnread(0);
+            setBellNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+          })
+          .catch(() => {});
+      }
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -54,7 +85,7 @@ function Header({ setSidebarOpen }) {
         {/* Bell with dropdown */}
         <div className="relative">
           <button
-            onClick={() => setBellOpen(!bellOpen)}
+            onClick={toggleBell}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
           >
             <Bell className="w-5 h-5 text-gray-600" />

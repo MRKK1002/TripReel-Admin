@@ -16,6 +16,7 @@ import {
   operatorBatchesAPI,
   operatorPackagesAPI,
   resolveImageUrl,
+  operatorTripBookingsAPI,
 } from "../../services/api";
 
 const inp =
@@ -348,6 +349,25 @@ function PackageBatchRow({ pkg }) {
     }
   };
 
+  const handleCancelBatch = async (batch) => {
+    const reason = window.prompt(
+      `Cancel batch "${batch.label || ""}"? All ${batch.bookedSeats} booking(s) will be cancelled and FULLY refunded. Enter a reason:`,
+    );
+    if (!reason || !reason.trim()) return;
+    try {
+      const res = await operatorTripBookingsAPI.cancelBatch(
+        batch._id,
+        reason.trim(),
+      );
+      alert(
+        `Batch cancelled. ${res.data.cancelledCount} booking(s) refunded (₹${Number(res.data.totalRefund || 0).toLocaleString("en-IN")}).`,
+      );
+      fetchBatches();
+    } catch (err) {
+      setError(err.response?.data?.message || "Batch cancellation failed.");
+    }
+  };
+
   const isApproved = pkg.status === "APPROVED";
 
   return (
@@ -486,6 +506,15 @@ function PackageBatchRow({ pkg }) {
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
+                        {b.bookedSeats > 0 && (
+                          <button
+                            onClick={() => handleCancelBatch(b)}
+                            className="px-2 py-1.5 text-xs font-medium text-red-600 hover:text-white hover:bg-red-500 border border-red-200 rounded-lg transition-colors"
+                            title="Cancel batch & refund all"
+                          >
+                            Cancel & Refund
+                          </button>
+                        )}
                         {b.bookedSeats === 0 && (
                           <>
                             <button

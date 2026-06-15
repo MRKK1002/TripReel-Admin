@@ -115,6 +115,7 @@ export default function OperatorSidebar({ sidebarOpen, setSidebarOpen }) {
               id: "operator/messages",
               label: "Messages",
               icon: MessageCircle,
+              badgeKey: "unreadMessages",
             },
             {
               id: "operator/notifications",
@@ -385,8 +386,7 @@ export default function OperatorSidebar({ sidebarOpen, setSidebarOpen }) {
                     ? operator.profilePhoto
                     : (window.location.hostname === "localhost"
                         ? "http://localhost:5001"
-                        : "https://api.tripreel.in") +
-                      operator.profilePhoto
+                        : "https://api.tripreel.in") + operator.profilePhoto
                 }
                 alt=""
                 className="w-10 h-10 rounded-full object-cover flex-shrink-0"

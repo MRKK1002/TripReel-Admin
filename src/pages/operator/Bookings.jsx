@@ -55,9 +55,38 @@ function fmtMoney(n) {
 }
 
 // ── Booking Detail Modal ──────────────────────────────────────────────────────
-function DetailModal({ booking, onClose }) {
+function DetailModal({ booking, onClose, onCancelled }) {
   const snap = booking.snapshot || {};
   const p = booking.pricing || {};
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelErr, setCancelErr] = useState("");
+
+  const tripStarted = snap.startDate && new Date(snap.startDate) <= new Date();
+  const canCancel =
+    ["CONFIRMED", "PENDING"].includes(booking.status) && !tripStarted;
+
+  const doCancel = async () => {
+    if (!cancelReason.trim()) {
+      setCancelErr("Please provide a reason.");
+      return;
+    }
+    setCancelling(true);
+    setCancelErr("");
+    try {
+      await operatorTripBookingsAPI.cancelBooking(
+        booking._id,
+        cancelReason.trim(),
+      );
+      onCancelled?.();
+      onClose();
+    } catch (err) {
+      setCancelErr(err.response?.data?.message || "Cancel failed.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -209,6 +238,52 @@ function DetailModal({ booking, onClose }) {
               <p className="text-xs text-red-800">{booking.cancelReason}</p>
             </div>
           )}
+
+          {/* Cancel action */}
+          {canCancel && (
+            <div className="border-t border-gray-100 pt-4">
+              {!showCancel ? (
+                <button
+                  onClick={() => setShowCancel(true)}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100"
+                >
+                  Cancel This Booking
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    Cancelling gives the customer a <strong>100% refund</strong>
+                    . Admin will be notified. This cannot be undone.
+                  </div>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    rows={2}
+                    placeholder="Reason for cancellation (required)…"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-red-300 resize-none"
+                  />
+                  {cancelErr && (
+                    <p className="text-xs text-red-600">{cancelErr}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowCancel(false)}
+                      className="flex-1 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200"
+                    >
+                      Keep Booking
+                    </button>
+                    <button
+                      onClick={doCancel}
+                      disabled={cancelling}
+                      className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50"
+                    >
+                      {cancelling ? "Cancelling…" : "Confirm Cancel"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -222,9 +297,21 @@ export default function OperatorBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const limit = 20;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -232,6 +319,9 @@ export default function OperatorBookings() {
     try {
       const params = { page, limit };
       if (statusFilter !== "all") params.status = statusFilter;
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
       const res = await operatorTripBookingsAPI.getMine(params);
       setBookings(res.data.bookings || []);
       setTotal(res.data.total || 0);
@@ -240,7 +330,7 @@ export default function OperatorBookings() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, statusFilter, debouncedSearch, fromDate, toDate]);
 
   useEffect(() => {
     fetchBookings();
@@ -313,6 +403,53 @@ export default function OperatorBookings() {
             {s === "all" ? "All" : s}
           </button>
         ))}
+      </div>
+
+      {/* Search + date filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by booking ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => {
+              setFromDate(e.target.value);
+              setPage(1);
+            }}
+            className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-teal-500"
+          />
+          <span className="text-gray-400 text-sm">to</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => {
+              setToDate(e.target.value);
+              setPage(1);
+            }}
+            className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-teal-500"
+          />
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+                setPage(1);
+              }}
+              className="text-xs text-gray-500 hover:text-red-500 underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -456,6 +593,7 @@ export default function OperatorBookings() {
         <DetailModal
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
+          onCancelled={fetchBookings}
         />
       )}
     </div>

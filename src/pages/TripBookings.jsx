@@ -142,42 +142,144 @@ function BookingModal({ booking, onClose, onStatusChanged }) {
             </p>
           </div>
 
-          {/* Pricing */}
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">
-              Pricing
-            </p>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Subtotal</span>
-                <span>{fmtMoney(p.subtotal)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">GST ({p.gstPercent}%)</span>
-                <span>{fmtMoney(p.gstAmount)}</span>
-              </div>
-              {p.discountAmount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span className="text-xs">Coupon ({p.couponCode})</span>
-                  <span className="text-xs">-{fmtMoney(p.discountAmount)}</span>
+          {/* Money Flow Breakdown */}
+          {(() => {
+            const addonAmount = p.addonAmount || 0;
+            const addonSurcharge = booking.addonSurcharge || 0;
+            const addonBase = Math.max(0, addonAmount - addonSurcharge);
+            const fareSub = p.fareSubtotal ?? p.subtotal ?? 0;
+            const platformKeeps =
+              (p.platformFeeAmount || 0) + (p.gstAmount || 0);
+
+            // Settlement status
+            let settle = null;
+            if (booking.status === "CANCELLED") {
+              settle = {
+                color: "bg-red-50 text-red-700 border-red-200",
+                text: "Booking cancelled — see Refunds page for refund details.",
+              };
+            } else if (
+              booking.status === "COMPLETED" &&
+              booking.walletReleased
+            ) {
+              settle = {
+                color: "bg-green-50 text-green-700 border-green-200",
+                text: `Operator paid ₹${Number(p.operatorAmount || 0).toLocaleString("en-IN")} (escrow released).`,
+              };
+            } else if (booking.status === "COMPLETED") {
+              settle = {
+                color: "bg-amber-50 text-amber-700 border-amber-200",
+                text: "Trip completed — operator payout releasing (2 days after trip end).",
+              };
+            } else if (booking.status === "CONFIRMED") {
+              const rel = snap.endDate
+                ? new Date(
+                    new Date(snap.endDate).getTime() + 2 * 86400000,
+                  ).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "2 days after trip ends";
+              settle = {
+                color: "bg-blue-50 text-blue-700 border-blue-200",
+                text: `In escrow — operator gets ₹${Number(p.operatorAmount || 0).toLocaleString("en-IN")} on ${rel}.`,
+              };
+            }
+
+            return (
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">
+                  Money Flow
+                </p>
+
+                {/* What customer paid */}
+                <p className="text-[11px] font-semibold text-gray-500 mb-1">
+                  CUSTOMER PAID
+                </p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Trip fare</span>
+                    <span>{fmtMoney(fareSub)}</span>
+                  </div>
+                  {addonAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Add-ons (held)</span>
+                      <span>{fmtMoney(addonAmount)}</span>
+                    </div>
+                  )}
+                  {p.discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span className="text-xs">Coupon ({p.couponCode})</span>
+                      <span className="text-xs">
+                        -{fmtMoney(p.discountAmount)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">GST ({p.gstPercent}%)</span>
+                    <span>{fmtMoney(p.gstAmount)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold border-t border-gray-200 pt-1 mt-1">
+                    <span>Total Paid</span>
+                    <span>{fmtMoney(p.totalAmount)}</span>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between font-bold border-t border-gray-200 pt-1 mt-1">
-                <span>Total Paid</span>
-                <span>{fmtMoney(p.totalAmount)}</span>
+
+                {/* Where it goes */}
+                <p className="text-[11px] font-semibold text-gray-500 mt-3 mb-1">
+                  WHERE IT GOES
+                </p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-teal-700">🧑‍✈️ Operator earnings</span>
+                    <span className="font-semibold text-teal-700">
+                      {fmtMoney(p.operatorAmount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      🏢 Platform fee ({p.platformFeePercent}%)
+                    </span>
+                    <span>{fmtMoney(p.platformFeeAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">🧾 GST (to govt)</span>
+                    <span>{fmtMoney(p.gstAmount)}</span>
+                  </div>
+                  {addonBase > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">📷 Snapja (add-on)</span>
+                      <span>{fmtMoney(addonBase)}</span>
+                    </div>
+                  )}
+                  {addonSurcharge > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">
+                        ↳ incl. outside-city surcharge (operator)
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {fmtMoney(addonSurcharge)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xs text-gray-400 border-t border-gray-200 pt-1 mt-1">
+                    <span>Platform retains (fee + GST)</span>
+                    <span>{fmtMoney(platformKeeps)}</span>
+                  </div>
+                </div>
+
+                {/* Settlement status */}
+                {settle && (
+                  <div
+                    className={`mt-3 p-2.5 rounded-lg border text-xs font-medium ${settle.color}`}
+                  >
+                    {settle.text}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between text-teal-600">
-                <span className="text-xs">
-                  Platform Fee ({p.platformFeePercent}%)
-                </span>
-                <span className="text-xs">{fmtMoney(p.platformFeeAmount)}</span>
-              </div>
-              <div className="flex justify-between text-teal-700 font-semibold">
-                <span className="text-xs">Operator Receives</span>
-                <span className="text-xs">{fmtMoney(p.operatorAmount)}</span>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Travelers */}
           {booking.travelers?.length > 0 && (
@@ -332,6 +434,8 @@ export default function TripBookings() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const limit = 20;
@@ -351,6 +455,8 @@ export default function TripBookings() {
       const params = { page, limit };
       if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter !== "all") params.status = statusFilter;
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
       const res = await adminTripBookingsAPI.getAll(params);
       setBookings(res.data.bookings || []);
       setTotal(res.data.total || 0);
@@ -359,7 +465,7 @@ export default function TripBookings() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, debouncedSearch, statusFilter, fromDate, toDate]);
 
   useEffect(() => {
     fetchBookings();
@@ -399,15 +505,50 @@ export default function TripBookings() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search by booking ID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by booking ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => {
+              setFromDate(e.target.value);
+              setPage(1);
+            }}
+            className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <span className="text-gray-400 text-sm">to</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => {
+              setToDate(e.target.value);
+              setPage(1);
+            }}
+            className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+                setPage(1);
+              }}
+              className="text-xs text-gray-500 hover:text-red-500 underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}

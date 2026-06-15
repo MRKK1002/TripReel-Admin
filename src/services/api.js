@@ -294,6 +294,15 @@ export const adminTripBookingsAPI = {
     api.patch(`/trip-bookings/${id}/status`, { status, cancelReason }),
 };
 
+// Admin — refunds / cancellations log
+export const adminRefundsAPI = {
+  getAll: (params) => api.get("/trip-bookings/admin/refunds", { params }),
+  retry: (id, amount) =>
+    api.post(`/trip-bookings/admin/refunds/${id}/retry`, { amount }),
+  markDone: (id, note) =>
+    api.post(`/trip-bookings/admin/refunds/${id}/mark-done`, { note }),
+};
+
 // Admin — batches
 export const adminBatchesAPI = {
   getAll: (params) => api.get("/batches/admin/all", { params }),
@@ -318,6 +327,7 @@ export const operatorSettingsAPI = {
 export const walletAdminAPI = {
   getAll: (params) => api.get("/wallet/admin/all", { params }),
   getByOperator: (operatorId) => api.get(`/wallet/admin/${operatorId}`),
+  getWithdrawals: (params) => api.get("/wallet/admin/withdrawals", { params }),
 };
 
 // Admin — cron
@@ -379,6 +389,10 @@ export const operatorBatchesAPI = {
 // Operator — bookings for their packages
 export const operatorTripBookingsAPI = {
   getMine: (params) => operatorApi.get("/operator-bookings", { params }),
+  cancelBooking: (id, reason) =>
+    operatorApi.post(`/operator-bookings/${id}/cancel`, { reason }),
+  cancelBatch: (batchId, reason) =>
+    operatorApi.post(`/operator-bookings/batch/${batchId}/cancel`, { reason }),
 };
 
 // Operator — wallet
@@ -386,6 +400,9 @@ export const operatorWalletAPI = {
   get: () => operatorApi.get("/wallet"),
   getTransactions: (params) =>
     operatorApi.get("/wallet/transactions", { params }),
+  withdraw: (data) => operatorApi.post("/wallet/withdraw", data),
+  getWithdrawals: (params) =>
+    operatorApi.get("/wallet/withdrawals", { params }),
 };
 
 // Operator — coupons

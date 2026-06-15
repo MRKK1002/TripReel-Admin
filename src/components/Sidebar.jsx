@@ -21,6 +21,7 @@ import {
   Percent,
   Bell,
   Megaphone,
+  Send,
   ChevronDown,
   ChevronRight,
   MapPin,
@@ -123,7 +124,14 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
           badgeKey: "newBookings",
         },
         { id: "revenue", label: "Revenue", icon: BarChart3 },
+        {
+          id: "refunds",
+          label: "Refunds",
+          icon: Percent,
+          badgeKey: "failedRefunds",
+        },
         { id: "operator-wallets", label: "Operator Wallets", icon: Wallet },
+        { id: "withdrawals", label: "Withdrawals", icon: Send },
       ],
     },
     {
@@ -140,7 +148,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
           badgeKey: "pendingOperators",
         },
         { id: "wishlists", label: "Wishlists", icon: Heart },
-        { id: "reports", label: "User Reports", icon: AlertTriangle },
+        {
+          id: "reports",
+          label: "User Reports",
+          icon: AlertTriangle,
+          badgeKey: "pendingReports",
+        },
       ],
     },
     {

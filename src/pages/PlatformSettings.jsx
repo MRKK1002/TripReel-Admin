@@ -259,74 +259,87 @@ export default function PlatformSettings() {
             </div>
 
             <div className="p-6 space-y-5">
-              {textSettings.map((item) => (
-                <div
-                  key={item.key}
-                  className="bg-gray-50 rounded-xl p-5 border border-gray-100"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                    <p className="text-sm font-semibold text-gray-700">
-                      {LABELS[item.key] || item.label}
-                    </p>
-                  </div>
-                  <p className="text-xs text-gray-400 mb-3">
-                    {DESCRIPTIONS[item.key] || ""}
-                  </p>
-
-                  {/* Current value display */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3">
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {item.value || (
-                        <span className="text-gray-400 italic">Not set</span>
+              {textSettings.map((item) => {
+                const isAutoManaged =
+                  item.key === "default_cancellation_policy";
+                return (
+                  <div
+                    key={item.key}
+                    className="bg-gray-50 rounded-xl p-5 border border-gray-100"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <p className="text-sm font-semibold text-gray-700">
+                        {LABELS[item.key] || item.label}
+                      </p>
+                      {isAutoManaged && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
+                          Auto-generated
+                        </span>
                       )}
-                    </p>
-                  </div>
-
-                  {/* Edit field */}
-                  <div className="flex items-start gap-2">
-                    <textarea
-                      value={editing[item.key] ?? ""}
-                      onChange={(e) =>
-                        setEditing((ed) => ({
-                          ...ed,
-                          [item.key]: e.target.value,
-                        }))
-                      }
-                      rows={3}
-                      className="flex-1 px-3 py-2.5 text-sm outline-none border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-400 focus:border-teal-400 resize-none"
-                      placeholder="Enter policy text..."
-                    />
-                    <button
-                      onClick={() => handleSave(item.key)}
-                      disabled={saving[item.key]}
-                      className="flex items-center gap-1.5 px-4 py-2.5 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 disabled:opacity-50 transition-colors whitespace-nowrap"
-                    >
-                      {saving[item.key] ? (
-                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : success[item.key] ? (
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                      ) : (
-                        <Save className="w-3.5 h-3.5" />
-                      )}
-                      {success[item.key] ? "Saved" : "Save"}
-                    </button>
-                  </div>
-
-                  {errors[item.key] && (
-                    <div className="flex items-center gap-1.5 mt-2 text-xs text-red-600">
-                      <AlertCircle className="w-3 h-3" />
-                      {errors[item.key]}
                     </div>
-                  )}
-                  {item.updatedAt && (
-                    <p className="text-[11px] text-gray-400 mt-2">
-                      Updated:{" "}
-                      {new Date(item.updatedAt).toLocaleString("en-IN")}
+                    <p className="text-xs text-gray-400 mb-3">
+                      {isAutoManaged
+                        ? "Auto-generated from the refund tiers. Edit it in Package Management → Cancellation Slabs."
+                        : DESCRIPTIONS[item.key] || ""}
                     </p>
-                  )}
-                </div>
-              ))}
+
+                    {/* Current value display */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {item.value || (
+                          <span className="text-gray-400 italic">Not set</span>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Edit field — hidden for auto-managed policy */}
+                    {!isAutoManaged && (
+                      <div className="flex items-start gap-2">
+                        <textarea
+                          value={editing[item.key] ?? ""}
+                          onChange={(e) =>
+                            setEditing((ed) => ({
+                              ...ed,
+                              [item.key]: e.target.value,
+                            }))
+                          }
+                          rows={3}
+                          className="flex-1 px-3 py-2.5 text-sm outline-none border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-400 focus:border-teal-400 resize-none"
+                          placeholder="Enter policy text..."
+                        />
+                        <button
+                          onClick={() => handleSave(item.key)}
+                          disabled={saving[item.key]}
+                          className="flex items-center gap-1.5 px-4 py-2.5 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                        >
+                          {saving[item.key] ? (
+                            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : success[item.key] ? (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5" />
+                          )}
+                          {success[item.key] ? "Saved" : "Save"}
+                        </button>
+                      </div>
+                    )}
+
+                    {errors[item.key] && (
+                      <div className="flex items-center gap-1.5 mt-2 text-xs text-red-600">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors[item.key]}
+                      </div>
+                    )}
+                    {item.updatedAt && (
+                      <p className="text-[11px] text-gray-400 mt-2">
+                        Updated:{" "}
+                        {new Date(item.updatedAt).toLocaleString("en-IN")}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

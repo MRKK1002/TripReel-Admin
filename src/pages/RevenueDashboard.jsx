@@ -69,6 +69,8 @@ export default function RevenueDashboard() {
     totalPlatformEarnings: platformEarnings = 0,
     totalOperatorPayouts: operatorPayouts = 0,
     totalRefunds = 0,
+    totalGstCollected = 0,
+    totalSnapjaPayouts = 0,
     thisMonthRevenue = 0,
     thisMonthPlatformFee = 0,
     revenueGrowth = 0,
@@ -122,6 +124,20 @@ export default function RevenueDashboard() {
       icon: XCircle,
       color: "bg-red-500",
       bgLight: "bg-red-50",
+    },
+    {
+      label: "GST Collected",
+      value: formatMoney(totalGstCollected),
+      icon: IndianRupee,
+      color: "bg-amber-500",
+      bgLight: "bg-amber-50",
+    },
+    {
+      label: "Snapja Add-on Payouts",
+      value: formatMoney(totalSnapjaPayouts),
+      icon: Briefcase,
+      color: "bg-purple-500",
+      bgLight: "bg-purple-50",
     },
   ];
 

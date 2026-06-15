@@ -171,18 +171,30 @@ export default function OperatorWallets() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const limit = 20;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const fetchWallets = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await walletAdminAPI.getAll({ page, limit });
+      const params = { page, limit };
+      if (debouncedSearch) params.search = debouncedSearch;
+      const res = await walletAdminAPI.getAll(params);
       setWallets(res.data.wallets || []);
       setTotal(res.data.total || 0);
     } catch {}
     setLoading(false);
-  }, [page]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => {
     fetchWallets();
@@ -218,6 +230,18 @@ export default function OperatorWallets() {
         <p className="text-xs text-teal-200 mt-1">
           Across {total} operator wallets
         </p>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search operator by name or email…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+        />
       </div>
 
       {/* Table */}
