@@ -19,6 +19,7 @@ export default function AdminLogin() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // If already logged in as admin, redirect
   if (user && user.role === "admin") {
@@ -28,9 +29,22 @@ export default function AdminLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    const fe = {};
+    const email = form.email.trim();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!email) fe.email = "Email is required.";
+    else if (!emailRegex.test(email))
+      fe.email = "Please enter a valid email address.";
+    if (!form.password) fe.password = "Password is required.";
+    if (Object.keys(fe).length > 0) {
+      setFieldErrors(fe);
+      return;
+    }
+
     setLoading(true);
     try {
-      const u = await adminLogin(form.email, form.password);
+      const u = await adminLogin(form.email.trim(), form.password);
       if (u.role !== "admin") {
         setError("Access denied. Admin accounts only.");
         localStorage.removeItem("token");
@@ -80,30 +94,43 @@ export default function AdminLogin() {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Email address
             </label>
-            <div className="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-teal-500 bg-white">
+            <div
+              className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 focus-within:ring-2 ${fieldErrors.email ? "border-red-300 focus-within:ring-red-200 bg-red-50" : "border-gray-300 focus-within:ring-teal-500 focus-within:border-teal-500 bg-white"}`}
+            >
               <Mail className="w-4 h-4 text-gray-400" />
               <input
                 type="email"
-                required
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, email: e.target.value });
+                  setFieldErrors((p) => ({ ...p, email: "" }));
+                }}
                 placeholder="admin@tripreel.com"
                 className="flex-1 text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
               />
             </div>
+            {fieldErrors.email && (
+              <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {fieldErrors.email}
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Password
             </label>
-            <div className="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-teal-500 bg-white">
+            <div
+              className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 focus-within:ring-2 ${fieldErrors.password ? "border-red-300 focus-within:ring-red-200 bg-red-50" : "border-gray-300 focus-within:ring-teal-500 focus-within:border-teal-500 bg-white"}`}
+            >
               <Lock className="w-4 h-4 text-gray-400" />
               <input
                 type={showPwd ? "text" : "password"}
-                required
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, password: e.target.value });
+                  setFieldErrors((p) => ({ ...p, password: "" }));
+                }}
                 placeholder="••••••••"
                 className="flex-1 text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
               />
@@ -119,6 +146,11 @@ export default function AdminLogin() {
                 )}
               </button>
             </div>
+            {fieldErrors.password && (
+              <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {fieldErrors.password}
+              </p>
+            )}
           </div>
 
           <button

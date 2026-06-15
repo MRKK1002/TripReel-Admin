@@ -87,6 +87,8 @@ export default function OperatorRegister() {
     if (!form.contactName.trim()) fe.contactName = "Full name is required.";
     else if (form.contactName.trim().length < 2)
       fe.contactName = "Please enter a valid full name.";
+    else if (!/^[a-zA-Z\s.]+$/.test(form.contactName.trim()))
+      fe.contactName = "Name can only contain letters, spaces and dots.";
 
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!form.email.trim()) fe.email = "Email is required.";
@@ -169,7 +171,7 @@ export default function OperatorRegister() {
               icon={Mail}
               type="email"
               value={form.email}
-              onChange={(v) => set("email", v)}
+              onChange={(v) => set("email", v.replace(/\s/g, ""))}
               placeholder="you@company.com"
               error={fieldErrors.email}
             />
