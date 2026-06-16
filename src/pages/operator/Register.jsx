@@ -91,9 +91,18 @@ export default function OperatorRegister() {
       fe.contactName = "Name can only contain letters, spaces and dots.";
 
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!form.email.trim()) fe.email = "Email is required.";
-    else if (!emailRegex.test(form.email.trim()))
+    const email = form.email.trim();
+    if (!email) fe.email = "Email is required.";
+    else if (!emailRegex.test(email))
       fe.email = "Please enter a valid email address.";
+    else {
+      // Catch obvious typos like "gmail.commmmm" — repeated chars or an
+      // unusually long top-level domain.
+      const domain = email.split("@")[1] || "";
+      const tld = domain.split(".").pop() || "";
+      if (/(.)\1\1/.test(domain) || tld.length > 6)
+        fe.email = "This email looks like it has a typo. Please check it.";
+    }
 
     const phoneDigits = (form.phone || "").replace(/\D/g, "");
     if (!form.phone.trim()) fe.phone = "Phone number is required.";

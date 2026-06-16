@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
 import { operatorAuthAPI } from "../../services/api";
+import { COUNTRIES, INDIA_STATES } from "../../constants/locations";
 
 // ── Step config ───────────────────────────────────────────────────────────────
 const STEPS = [
@@ -76,6 +77,41 @@ function TextField({
             : "border-gray-300 focus:ring-teal-500 focus:border-teal-500"
         }`}
       />
+      <FieldError msg={error} />
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  required,
+  value,
+  onChange,
+  options,
+  placeholder,
+  error,
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 transition-all bg-white ${
+          error
+            ? "border-red-300 focus:ring-red-200 focus:border-red-400"
+            : "border-gray-300 focus:ring-teal-500 focus:border-teal-500"
+        } ${value ? "text-gray-800" : "text-gray-400"}`}
+      >
+        <option value="">{placeholder || "Select…"}</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt} className="text-gray-800">
+            {opt}
+          </option>
+        ))}
+      </select>
       <FieldError msg={error} />
     </div>
   );
@@ -459,22 +495,39 @@ export default function OperatorOnboarding() {
       case 2:
         return (
           <div className="space-y-4">
-            <TextField
+            <SelectField
               label="Country"
               required
               value={form.country}
-              onChange={(v) => set("country", v)}
-              placeholder="India"
+              onChange={(v) => {
+                set("country", v);
+                // reset state when leaving India (dropdown no longer applies)
+                if (v !== "India") set("state", "");
+              }}
+              options={COUNTRIES}
+              placeholder="Select country"
               error={errors.country}
             />
-            <TextField
-              label="State"
-              required
-              value={form.state}
-              onChange={(v) => set("state", v)}
-              placeholder="Maharashtra"
-              error={errors.state}
-            />
+            {form.country === "India" ? (
+              <SelectField
+                label="State"
+                required
+                value={form.state}
+                onChange={(v) => set("state", v)}
+                options={INDIA_STATES}
+                placeholder="Select state"
+                error={errors.state}
+              />
+            ) : (
+              <TextField
+                label="State / Province"
+                required
+                value={form.state}
+                onChange={(v) => set("state", v)}
+                placeholder="State / Province"
+                error={errors.state}
+              />
+            )}
             <TextField
               label="City"
               required
