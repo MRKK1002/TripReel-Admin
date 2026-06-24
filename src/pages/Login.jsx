@@ -75,7 +75,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img
-            src="/tripreellogo.png"
+            src="/newlogo.jpeg"
             alt="TripReel"
             className="h-12 w-auto mx-auto mb-4"
           />
@@ -191,3 +191,4 @@ export default function Login() {
     </div>
   );
 }
+

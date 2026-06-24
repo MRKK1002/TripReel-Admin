@@ -249,7 +249,7 @@ export default function OperatorSidebar({ sidebarOpen, setSidebarOpen }) {
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/tripreellogo.png"
+              src="/newlogo.jpeg"
               alt="TripReel"
               className="h-8 w-auto"
             />
@@ -422,3 +422,4 @@ export default function OperatorSidebar({ sidebarOpen, setSidebarOpen }) {
     </>
   );
 }
+

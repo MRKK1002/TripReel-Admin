@@ -21,6 +21,7 @@ import {
   resolveImageUrl,
 } from "../../services/api";
 import { COUNTRIES, INDIA_STATES } from "../../constants/locations";
+import PlacesAutocomplete from "../../components/PlacesAutocomplete";
 
 const STATUS_LABELS = {
   DRAFT: "Draft",
@@ -388,6 +389,8 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
             title: String(d.title || "").trim(),
             points: cleanStrList(d.points || []),
             pickupPoint: String(d.pickupPoint || "").trim(),
+            pickupLat: d.pickupLat || null,
+            pickupLng: d.pickupLng || null,
             isOutsideCity: Boolean(d.isOutsideCity),
           }))
           .filter((d) => d.title),
@@ -478,9 +481,11 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
   };
 
   const updateItinerary = (i, key, val) => {
-    const a = [...form.itinerary];
-    a[i] = { ...a[i], [key]: val };
-    set("itinerary", a);
+    setForm((f) => {
+      const a = [...f.itinerary];
+      a[i] = { ...a[i], [key]: val };
+      return { ...f, itinerary: a };
+    });
   };
   const updateItPoint = (di, pi, val) => {
     const a = [...form.itinerary];
@@ -806,12 +811,23 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
               {/* Pickup Point + Outside City Toggle */}
               <div className="pl-11 space-y-2">
                 <div className="flex gap-2 items-center">
-                  <input
+                  <PlacesAutocomplete
                     value={day.pickupPoint || ""}
-                    onChange={(e) =>
-                      updateItinerary(di, "pickupPoint", e.target.value)
-                    }
-                    placeholder="Pickup Point (e.g. Hotel Lobby, Bus Stand)"
+                    onChange={(val) => updateItinerary(di, "pickupPoint", val)}
+                    onPlaceSelect={(place) => {
+                      // Batch all updates into a single state change
+                      setForm((f) => {
+                        const a = [...f.itinerary];
+                        a[di] = {
+                          ...a[di],
+                          pickupPoint: place.name,
+                          pickupLat: place.lat || null,
+                          pickupLng: place.lng || null,
+                        };
+                        return { ...f, itinerary: a };
+                      });
+                    }}
+                    placeholder="Search pickup point (e.g. Hotel Lobby, Bus Stand)"
                     className={inp + " flex-1"}
                   />
                   <label
