@@ -104,6 +104,28 @@ const inp =
 
 const TOUR_TYPES = ["Domestic", "International", "Adventure"];
 
+// ── Preview helpers ───────────────────────────────────────────────────────────
+function PreviewItem({ label, value }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className="text-sm text-gray-800 mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function PreviewSection({ title, children }) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-4">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
 function TagListEditor({ label, values, onChange }) {
   const update = (i, val) => {
     const a = [...values];
@@ -389,6 +411,7 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
             title: String(d.title || "").trim(),
             points: cleanStrList(d.points || []),
             pickupPoint: String(d.pickupPoint || "").trim(),
+            pickupTime: String(d.pickupTime || "").trim(),
             pickupLat: d.pickupLat || null,
             pickupLng: d.pickupLng || null,
             isOutsideCity: Boolean(d.isOutsideCity),
@@ -753,11 +776,6 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
               </div>
             ))}
           </div>
-          <TagListEditor
-            label="Video URLs (optional)"
-            values={form.videos || [""]}
-            onChange={(v) => set("videos", v)}
-          />
         </div>
       );
     }
@@ -808,7 +826,7 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
                 )}
               </div>
 
-              {/* Pickup Point + Outside City Toggle */}
+              {/* Pickup Point + Time + Outside City Toggle */}
               <div className="pl-11 space-y-2">
                 <div className="flex gap-2 items-center">
                   <PlacesAutocomplete
@@ -829,6 +847,15 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
                     }}
                     placeholder="Search pickup point (e.g. Hotel Lobby, Bus Stand)"
                     className={inp + " flex-1"}
+                  />
+                  <input
+                    type="time"
+                    value={day.pickupTime || ""}
+                    onChange={(e) =>
+                      updateItinerary(di, "pickupTime", e.target.value)
+                    }
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-teal-400 focus:bg-white transition-all w-36 flex-shrink-0"
+                    title="Pickup time"
                   />
                   <label
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs cursor-pointer whitespace-nowrap transition-colors ${
@@ -1138,62 +1165,6 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
               </div>
             </div>
           </div>
-
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm font-semibold text-gray-800 mb-3">
-              Offer (optional)
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Coupon Code
-                </label>
-                <input
-                  value={form.offer?.couponCode}
-                  onChange={(e) =>
-                    setNested("offer.couponCode", e.target.value)
-                  }
-                  className={inp}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Early Bird Offer
-                </label>
-                <input
-                  value={form.offer?.earlyBirdOffer}
-                  onChange={(e) =>
-                    setNested("offer.earlyBirdOffer", e.target.value)
-                  }
-                  className={inp}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Festival Offer
-                </label>
-                <input
-                  value={form.offer?.festivalOffer}
-                  onChange={(e) =>
-                    setNested("offer.festivalOffer", e.target.value)
-                  }
-                  className={inp}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Group Discount
-                </label>
-                <input
-                  value={form.offer?.groupDiscount}
-                  onChange={(e) =>
-                    setNested("offer.groupDiscount", e.target.value)
-                  }
-                  className={inp}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       );
     }
@@ -1244,6 +1215,262 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
               </div>
             )}
           </div>
+
+          {/* Gallery thumbnails */}
+          {imagePreviews.filter(Boolean).length > 1 && (
+            <div className="grid grid-cols-4 gap-2">
+              {imagePreviews.filter(Boolean).map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`photo ${i + 1}`}
+                  className="w-full h-16 object-cover rounded-lg"
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Basic info grid */}
+          <div className="bg-white border border-gray-100 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+            <PreviewItem label="Tour Type" value={form.tourType} />
+            <PreviewItem label="Departure City" value={form.departureCity} />
+            <PreviewItem
+              label="Location"
+              value={[form.city, form.state, form.country]
+                .filter(Boolean)
+                .join(", ")}
+            />
+            <PreviewItem
+              label="Duration"
+              value={
+                form.durationDays || form.durationNights
+                  ? `${form.durationDays || 0}D / ${form.durationNights || 0}N`
+                  : form.duration
+              }
+            />
+            <PreviewItem
+              label="Adult Price"
+              value={
+                form.pricing?.adultPrice
+                  ? `₹${Number(form.pricing.adultPrice).toLocaleString()}`
+                  : null
+              }
+            />
+            <PreviewItem
+              label="Child Price"
+              value={
+                form.pricing?.childPrice
+                  ? `₹${Number(form.pricing.childPrice).toLocaleString()}`
+                  : null
+              }
+            />
+          </div>
+
+          {/* About */}
+          {form.aboutThisTrip && (
+            <PreviewSection title="About This Trip">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {form.aboutThisTrip}
+              </p>
+            </PreviewSection>
+          )}
+
+          {/* Highlights */}
+          {form.highlights?.filter(Boolean).length > 0 && (
+            <PreviewSection title="Highlights">
+              <ul className="space-y-1">
+                {form.highlights.filter(Boolean).map((h, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center gap-2 text-sm text-gray-700"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                    {h}
+                  </li>
+                ))}
+              </ul>
+            </PreviewSection>
+          )}
+
+          {/* Itinerary */}
+          {form.itinerary?.filter((d) => d.title).length > 0 && (
+            <PreviewSection title="Itinerary">
+              <div className="space-y-2">
+                {form.itinerary
+                  .filter((d) => d.title)
+                  .map((day, i) => (
+                    <div key={i} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-800">
+                          Day {day.day || i + 1}: {day.title}
+                        </span>
+                        {day.isOutsideCity && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700">
+                            Outside City
+                          </span>
+                        )}
+                      </div>
+                      {(day.pickupPoint || day.pickupTime) && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📍 {day.pickupPoint || "—"}
+                          {day.pickupTime ? ` • ⏰ ${day.pickupTime}` : ""}
+                        </p>
+                      )}
+                      {day.points?.filter(Boolean).length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {day.points.filter(Boolean).map((pt, pi) => (
+                            <li
+                              key={pi}
+                              className="text-xs text-gray-600 flex items-start gap-1.5"
+                            >
+                              <span className="w-1 h-1 rounded-full bg-gray-400 mt-1.5" />
+                              {pt}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </PreviewSection>
+          )}
+
+          {/* Add-ons */}
+          {form.addons?.filter((a) => a.name).length > 0 && (
+            <PreviewSection title="Add-Ons">
+              <div className="space-y-2">
+                {form.addons
+                  .filter((a) => a.name)
+                  .map((a, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
+                    >
+                      <span className="text-sm text-gray-800">{a.name}</span>
+                      <span className="text-sm font-bold text-teal-600">
+                        ₹{Number(a.price || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+              {Number(form.outsideCityCharge) > 0 && (
+                <p className="text-xs text-amber-700 mt-2">
+                  Outside-city surcharge: ₹
+                  {Number(form.outsideCityCharge).toLocaleString()} / person /
+                  day
+                </p>
+              )}
+            </PreviewSection>
+          )}
+
+          {/* Inclusions / Exclusions */}
+          {(form.inclusions?.filter(Boolean).length > 0 ||
+            form.exclusions?.filter(Boolean).length > 0) && (
+            <div className="grid grid-cols-2 gap-3">
+              {form.inclusions?.filter(Boolean).length > 0 && (
+                <PreviewSection title="Inclusions">
+                  <ul className="space-y-1">
+                    {form.inclusions.filter(Boolean).map((x, i) => (
+                      <li key={i} className="text-sm text-green-700">
+                        ✓ {x}
+                      </li>
+                    ))}
+                  </ul>
+                </PreviewSection>
+              )}
+              {form.exclusions?.filter(Boolean).length > 0 && (
+                <PreviewSection title="Exclusions">
+                  <ul className="space-y-1">
+                    {form.exclusions.filter(Boolean).map((x, i) => (
+                      <li key={i} className="text-sm text-red-600">
+                        ✕ {x}
+                      </li>
+                    ))}
+                  </ul>
+                </PreviewSection>
+              )}
+            </div>
+          )}
+
+          {/* Hotel & Transport */}
+          {(form.hotelDetails?.hotelName ||
+            form.transportDetails?.flightIncluded ||
+            form.transportDetails?.busIncluded ||
+            form.transportDetails?.cabIncluded ||
+            form.transportDetails?.vehicleType) && (
+            <PreviewSection title="Hotel & Transport">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {form.hotelDetails?.hotelName && (
+                  <PreviewItem
+                    label="Hotel"
+                    value={`${form.hotelDetails.hotelName}${
+                      form.hotelDetails.hotelCategory
+                        ? ` (${form.hotelDetails.hotelCategory})`
+                        : ""
+                    }`}
+                  />
+                )}
+                {form.hotelDetails?.roomType && (
+                  <PreviewItem
+                    label="Room"
+                    value={form.hotelDetails.roomType}
+                  />
+                )}
+                {form.hotelDetails?.mealPlan && (
+                  <PreviewItem
+                    label="Meal Plan"
+                    value={form.hotelDetails.mealPlan}
+                  />
+                )}
+                {form.transportDetails?.vehicleType && (
+                  <PreviewItem
+                    label="Vehicle"
+                    value={form.transportDetails.vehicleType}
+                  />
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {form.transportDetails?.flightIncluded && (
+                  <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">
+                    Flight ✓
+                  </span>
+                )}
+                {form.transportDetails?.busIncluded && (
+                  <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">
+                    Bus ✓
+                  </span>
+                )}
+                {form.transportDetails?.cabIncluded && (
+                  <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">
+                    Cab ✓
+                  </span>
+                )}
+              </div>
+            </PreviewSection>
+          )}
+
+          {/* Policies */}
+          {(form.policies?.cancellationPolicy ||
+            form.policies?.refundPolicy ||
+            form.policies?.terms) && (
+            <PreviewSection title="Policies">
+              {form.policies.cancellationPolicy && (
+                <PreviewItem
+                  label="Cancellation"
+                  value={form.policies.cancellationPolicy}
+                />
+              )}
+              {form.policies.refundPolicy && (
+                <PreviewItem
+                  label="Refund"
+                  value={form.policies.refundPolicy}
+                />
+              )}
+              {form.policies.terms && (
+                <PreviewItem label="Terms" value={form.policies.terms} />
+              )}
+            </PreviewSection>
+          )}
         </div>
       );
     }

@@ -11,6 +11,7 @@ import {
   ChevronUp,
   Users,
   Clock,
+  MapPin,
 } from "lucide-react";
 import {
   operatorBatchesAPI,
@@ -47,7 +48,15 @@ const emptyBatch = {
 };
 
 // ── Batch Form Modal ──────────────────────────────────────────────────────────
-function BatchModal({ packageId, batch, durationDays = 0, onClose, onSaved }) {
+function BatchModal({
+  packageId,
+  batch,
+  durationDays = 0,
+  itinerary = [],
+  packageTitle = "",
+  onClose,
+  onSaved,
+}) {
   const [form, setForm] = useState(() =>
     batch
       ? {
@@ -67,24 +76,33 @@ function BatchModal({ packageId, batch, durationDays = 0, onClose, onSaved }) {
   const set = (k, v) => {
     setForm((f) => {
       const updated = { ...f, [k]: v };
-      // Auto-clamp: bookingDeadline can't exceed startDate
-      if (k === "startDate" && updated.bookingDeadline > v) {
-        updated.bookingDeadline = v;
+
+      // Deadline must be at least 1 day before the start date
+      const dayBefore = (dateStr) => {
+        if (!dateStr) return "";
+        const d = new Date(dateStr);
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split("T")[0];
+      };
+
+      if (k === "startDate" && v) {
+        // Auto-set deadline to the day before start
+        updated.bookingDeadline = dayBefore(v);
+        // Auto-calculate endDate from startDate + package durationDays
+        if (durationDays > 0) {
+          const start = new Date(v);
+          const end = new Date(start);
+          end.setDate(start.getDate() + durationDays);
+          updated.endDate = end.toISOString().split("T")[0];
+        }
       }
-      if (
-        k === "bookingDeadline" &&
-        updated.startDate &&
-        v > updated.startDate
-      ) {
-        updated.bookingDeadline = updated.startDate;
+
+      // Clamp deadline so it never reaches/exceeds the start date
+      if (k === "bookingDeadline" && updated.startDate) {
+        const maxDeadline = dayBefore(updated.startDate);
+        if (v >= updated.startDate) updated.bookingDeadline = maxDeadline;
       }
-      // Auto-calculate endDate from startDate + package durationDays
-      if (k === "startDate" && v && durationDays > 0) {
-        const start = new Date(v);
-        const end = new Date(start);
-        end.setDate(start.getDate() + durationDays);
-        updated.endDate = end.toISOString().split("T")[0];
-      }
+
       return updated;
     });
   };
@@ -132,17 +150,38 @@ function BatchModal({ packageId, batch, durationDays = 0, onClose, onSaved }) {
     }
   };
 
+  // ── Live trip timeline — maps each itinerary day to a real calendar date ─────
+  const validDays = (itinerary || []).filter((d) => d?.title);
+  const timeline = validDays.map((day, i) => {
+    let dateLabel = "";
+    if (form.startDate) {
+      const d = new Date(form.startDate);
+      d.setDate(d.getDate() + i);
+      dateLabel = d.toLocaleDateString("en-IN", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+      });
+    }
+    return { ...day, index: i, dateLabel };
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">
-            {batch ? "Edit Batch" : "Add New Batch"}
-          </h2>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">
+              {batch ? "Edit Batch" : "Add New Batch"}
+            </h2>
+            {packageTitle && (
+              <p className="text-xs text-gray-400 mt-0.5">{packageTitle}</p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-1.5 hover:bg-gray-100 rounded-lg"
@@ -151,140 +190,229 @@ function BatchModal({ packageId, batch, durationDays = 0, onClose, onSaved }) {
           </button>
         </div>
 
-        <form
-          onSubmit={handleSave}
-          className="flex-1 overflow-y-auto p-5 space-y-4"
-        >
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /> {error}
-            </div>
-          )}
+        {/* Two-column body: form + live timeline */}
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          <form
+            onSubmit={handleSave}
+            className="md:w-[55%] overflow-y-auto p-5 space-y-4 border-r border-gray-100"
+          >
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /> {error}
+              </div>
+            )}
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  value={form.startDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => set("startDate", e.target.value)}
+                  className={inp}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  value={form.endDate}
+                  min={form.startDate || new Date().toISOString().split("T")[0]}
+                  onChange={(e) => set("endDate", e.target.value)}
+                  className={inp}
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Start Date *
+                Booking Deadline *
+                <span className="ml-1 text-gray-400 font-normal">
+                  (must be before start date)
+                </span>
               </label>
               <input
                 type="date"
-                value={form.startDate}
+                value={form.bookingDeadline}
                 min={new Date().toISOString().split("T")[0]}
-                onChange={(e) => set("startDate", e.target.value)}
+                max={
+                  form.startDate
+                    ? (() => {
+                        const d = new Date(form.startDate);
+                        d.setDate(d.getDate() - 1);
+                        return d.toISOString().split("T")[0];
+                      })()
+                    : undefined
+                }
+                onChange={(e) => set("bookingDeadline", e.target.value)}
                 className={inp}
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                End Date *
-              </label>
-              <input
-                type="date"
-                value={form.endDate}
-                min={form.startDate || new Date().toISOString().split("T")[0]}
-                onChange={(e) => set("endDate", e.target.value)}
-                className={inp}
-              />
-            </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Booking Deadline *
-              <span className="ml-1 text-gray-400 font-normal">
-                (must be ≤ start date)
-              </span>
-            </label>
-            <input
-              type="date"
-              value={form.bookingDeadline}
-              min={new Date().toISOString().split("T")[0]}
-              max={form.startDate || undefined}
-              onChange={(e) => set("bookingDeadline", e.target.value)}
-              className={inp}
-            />
-          </div>
+            {/* Pricing */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Adult Price (₹) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="8999"
+                  value={form.adultPrice}
+                  onChange={(e) => set("adultPrice", e.target.value)}
+                  className={inp}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Child Price (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="5999"
+                  value={form.childPrice}
+                  onChange={(e) => set("childPrice", e.target.value)}
+                  className={inp}
+                />
+              </div>
+            </div>
 
-          {/* Pricing */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Adult Price (₹) *
-              </label>
-              <input
-                type="number"
-                min="0"
-                placeholder="8999"
-                value={form.adultPrice}
-                onChange={(e) => set("adultPrice", e.target.value)}
-                className={inp}
-              />
+            {/* Seats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Total Seats *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="20"
+                  value={form.totalSeats}
+                  onChange={(e) => set("totalSeats", e.target.value)}
+                  className={inp}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Batch Label
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Christmas Special"
+                  value={form.label}
+                  onChange={(e) => set("label", e.target.value)}
+                  className={inp}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Child Price (₹)
-              </label>
-              <input
-                type="number"
-                min="0"
-                placeholder="5999"
-                value={form.childPrice}
-                onChange={(e) => set("childPrice", e.target.value)}
-                className={inp}
-              />
-            </div>
-          </div>
 
-          {/* Seats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Total Seats *
-              </label>
-              <input
-                type="number"
-                min="1"
-                placeholder="20"
-                value={form.totalSeats}
-                onChange={(e) => set("totalSeats", e.target.value)}
-                className={inp}
-              />
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-semibold hover:bg-teal-600 disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : null}
+                {batch ? "Update Batch" : "Add Batch"}
+              </button>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Batch Label
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Christmas Special"
-                value={form.label}
-                onChange={(e) => set("label", e.target.value)}
-                className={inp}
-              />
-            </div>
-          </div>
+          </form>
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-semibold hover:bg-teal-600 disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : null}
-              {batch ? "Update Batch" : "Add Batch"}
-            </button>
-          </div>
-        </form>
+          {/* ── Live Trip Timeline ─────────────────────────────────────────── */}
+          <aside className="md:w-[45%] bg-gradient-to-b from-teal-50/60 to-white overflow-y-auto p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="w-4 h-4 text-teal-600" />
+              <h3 className="text-sm font-bold text-gray-900">Trip Timeline</h3>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">
+              {form.startDate
+                ? "Day-by-day schedule for this batch"
+                : "Pick a start date to see the live schedule"}
+            </p>
+
+            {timeline.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <Calendar className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-xs">
+                  This package has no itinerary days yet.
+                </p>
+              </div>
+            ) : (
+              <div className="relative">
+                {/* vertical connector line */}
+                <div className="absolute left-[14px] top-2 bottom-2 w-px bg-teal-200" />
+                <div className="space-y-3">
+                  {timeline.map((day) => (
+                    <div key={day.index} className="relative flex gap-3">
+                      {/* day dot */}
+                      <div
+                        className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                          form.startDate
+                            ? "bg-teal-500 text-white"
+                            : "bg-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {day.index + 1}
+                      </div>
+                      {/* day card */}
+                      <div className="flex-1 bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-gray-800">
+                            Day {day.index + 1}
+                          </span>
+                          {day.dateLabel ? (
+                            <span className="text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+                              {day.dateLabel}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-sm text-gray-700 mt-0.5">
+                          {day.title}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                          {day.pickupPoint && (
+                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                              <MapPin className="w-3 h-3" />
+                              {day.pickupPoint}
+                            </span>
+                          )}
+                          {day.pickupTime && (
+                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                              <Clock className="w-3 h-3" />
+                              {day.pickupTime}
+                            </span>
+                          )}
+                          {day.isOutsideCity && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                              Outside City
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </aside>
+        </div>
       </div>
     </div>
   );
@@ -551,6 +679,8 @@ function PackageBatchRow({ pkg }) {
           packageId={pkg._id}
           batch={editBatch}
           durationDays={pkg.durationDays || 0}
+          itinerary={pkg.itinerary || []}
+          packageTitle={pkg.title}
           onClose={() => {
             setShowModal(false);
             setEditBatch(null);

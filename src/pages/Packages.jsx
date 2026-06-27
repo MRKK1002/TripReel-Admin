@@ -788,9 +788,17 @@ export default function PackageReview() {
   }, [packages]);
 
   const handleReviewed = (updated) => {
-    setPackages((prev) =>
-      prev.map((p) => (p._id === updated._id ? updated : p)),
-    );
+    // If the reviewed package no longer matches the active status filter
+    // (e.g. it was PENDING and is now APPROVED), drop it from the list so the
+    // admin doesn't keep seeing it under "Pending Review" until a manual refresh.
+    if (statusFilter !== "all" && updated.status !== statusFilter) {
+      setPackages((prev) => prev.filter((p) => p._id !== updated._id));
+      setTotal((t) => Math.max(0, t - 1));
+    } else {
+      setPackages((prev) =>
+        prev.map((p) => (p._id === updated._id ? updated : p)),
+      );
+    }
   };
 
   const handleDelete = async (id) => {
